@@ -13,6 +13,7 @@ def med_g_statistics():
     return y_visits_med_g
 
 def yearly_med_g_visits(df, y_visits_med_g):
+    # Création de la feature 'Nombre de visites annuelles de médecine générale'
     df['med_g_visites_annuelles'] = 0
     df.loc[:,'med_g_visites_annuelles'] = round(df.loc[:,'P18_POP0014']*3+\
                                     df.loc[:,'P18_POP1529']*y_visits_med_g['18-24']+\
@@ -21,4 +22,9 @@ def yearly_med_g_visits(df, y_visits_med_g):
                                     df.loc[:,'P18_POP6074']*y_visits_med_g['50-64']+\
                                     df.loc[:,'P18_POP7589']*y_visits_med_g['65-']+\
                                     df.loc[:,'P18_POP90P']*y_visits_med_g['65-'], 2)
+
+    # Création de la feature 'Besoin en médecins généralistes'
+    df['besoin_medecins_g'] = 0
+    df.loc[:,'besoin_medecins_g'] = round(df.loc[:,'med_g_visites_annuelles']/3999, 2)
+    
     return df
