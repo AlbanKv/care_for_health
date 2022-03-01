@@ -7,13 +7,13 @@ def get_med_pdl():
     #df avec seulement les colonnes utiles :
     #'Nom du professionnel', 'Profession', "Nature d'exercice",
     # 'Coordonnées', 'Adresse', 'Commune','Département', 'code_insee'
-    df_2 = df[['Nom du professionnel', 'Profession', "Nature d'exercice",'Coordonnées', 'Adresse', 'Commune','Département', 'code_insee']]
+    df_2 = df[['Nom du professionnel', 'Profession', "Nature d'exercice",'Coordonnées', 'Adresse', 'Commune','Département', 'code_insee']].copy()
     #cleaning doublons
-    df_3= df_2.drop_duplicates()
+    df_3= df_2.drop_duplicates().copy()
     # séparation des Coordonnées en Latitude, Longitude
     df_3[['Lat','Long']] = df_3["Coordonnées"].str.split(",",expand=True)
     #dataframe prêt
-    medecins_pdl = df_3[['Nom du professionnel', 'Profession', "Nature d'exercice",'Lat','Long', 'Adresse', 'Commune','Département', 'code_insee']]
+    medecins_pdl = df_3[['Nom du professionnel', 'Profession', "Nature d'exercice",'Lat','Long', 'Adresse', 'Commune','Département', 'code_insee']].copy()
     return medecins_pdl
 
 def read_laposte():
