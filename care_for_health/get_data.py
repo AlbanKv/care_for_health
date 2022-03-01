@@ -1,5 +1,8 @@
 import pandas as pd
 import numpy as np
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import OneHotEncoder
+from care_for_health import feature_engineering
 
 def get_med_pdl():
     #import du fichier medecins_pdl présent dans raw_data
@@ -73,6 +76,48 @@ def merge_insee_med():
     df_merge = df_merge[cols]
     
     return df_merge
+
+def get_full_medbase():
+    df = merge_insee_med()
+    col_val = ['Médecin généraliste', 'Chirurgien-dentiste', 'Radiologue', 'Sage-femme', 'Ophtalmologiste', 'Cardiologue']
+    short_df = df[df['Profession'].isin(col_val)].copy()
+
+    #OneHotEncode on selected professions:
+    encoder = OneHotEncoder(sparse=False)
+    encoder.fit(short_df[['Profession']])
+    profession_encoded = encoder.transform(short_df[['Profession']])
+    enc = encoder.categories_[0]
+    short_df[enc[0]], short_df[enc[1]], short_df[enc[2]], short_df[enc[3]], short_df[enc[4]], short_df[enc[5]] = profession_encoded.T
+
+    #Transform lat, lon in float
+    short_df['Lat'] = short_df['Lat'].astype(float)
+    short_df['Long'] = short_df['Long'].astype(float)
+
+    #Prepare dataset with stats for 'médecin généraliste'
+    stats = feature_engineering.med_g_statistics()
+    short_df = feature_engineering.yearly_med_g_visits(short_df, stats)
+
+    #Aggregate rows together:
+    prof_df = short_df.groupby('code_insee', as_index=False).agg(
+        Population_2018=('P18_POP','mean'), 
+        Décès_13_18= ('DECE1318','mean'),
+        Naissances_13_18=('NAIS1318','mean'),
+        Retraités_2018_55p=('C18_POP55P_CS7','mean'), 
+        Population_2013=('P13_POP','mean'), 
+        Médiane_revenu=('MED19','mean'), 
+        Taux_pauvreté=('TP6019','mean'), 
+        Lat=('Lat','mean'), 
+        Lon=('Long','mean'), 
+        Besoin_annuel_visites_méd_g=('med_g_visites_annuelles', 'mean'),
+        Besoin_médecins=('besoin_medecins_g', 'mean'),
+        Médecin_généraliste=('Médecin généraliste','sum'), 
+        Cardiologue=('Cardiologue','sum'), 
+        Chirurgien_dentiste=('Chirurgien-dentiste','sum'), 
+        Ophtalmologiste=('Ophtalmologiste','sum'), 
+        Radiologue=('Radiologue','sum'), 
+        Sage_femme=('Sage-femme','sum'), 
+        )
+    return prof_df
 
 
 '''
