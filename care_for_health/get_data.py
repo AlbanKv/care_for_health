@@ -15,6 +15,7 @@ def get_med_pdl():
     #dataframe prêt
     medecins_pdl = df_3[['Nom du professionnel', 'Profession', "Nature d'exercice",'Lat','Long', 'Adresse', 'Commune','Département', 'code_insee']].copy()
     medecins_pdl["code_insee"] = medecins_pdl["code_insee"].astype(str)
+
     return medecins_pdl
 
 def read_laposte():
@@ -93,4 +94,13 @@ def get_insee():
     nb_row_df = len(df)
     print(f"Attention : un tri doit encore être réalisé sur les codes postaux / codes commune INSEE car {nb_row_df - nb_row_insee} doublons sont apparus sur {nb_row_df} lors du merge")
     print("Il y a actuellement un merge avec le code postal. Si celui-ci n'est plus requis, ne pas tenir compte du message précédent")
-    return df'''
+
+    return df
+
+def read_pdl():
+    pdl = pd.read_csv('../raw_data/pays_de_la_loire.csv', delimiter=';', encoding='utf-8')
+    pdl.DATE_DEBUT_VALIDITE = pd.to_datetime(pdl.DATE_DEBUT_VALIDITE)
+    base_med_pays_de_la_loire = pdl[['CODE_DEPARTEMENT', 'LIBELLE_PROFESSION', 'LIBELLE_MODE_EXERCICE', 'RAISON_SOCIALE_SITE', 'IDENTIFIANT_PP', 'LIBELLE_COMMUNE_COORD_STRUCTURE','CODE_POSTAL_COORD_STRUCTURE', 'CODE_COMMUNE_COORD_STRUCTURE']].copy()
+    return base_med_pays_de_la_loire
+
+'''
