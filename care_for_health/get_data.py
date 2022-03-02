@@ -82,8 +82,10 @@ def get_full_medbase():
     #communes avec leurs polygon (affichage de map)
     df_comm = pd.read_csv("../raw_data/communes_fr.csv", delimiter=',', encoding='utf-8')[["codgeo", "geometry"]]
     df_insee = read_base_insee()
+    #long/lat des communes
+    df_gps_comm = pd.read_csv('../raw_data/communes_gps.csv', delimiter=',', encoding='utf-8')[["code_commune_INSEE", "latitude", "longitude"]]
     
-    # Récupération des communes pdl
+    # Récupération des communes pdl (polygon)
     cp_pdl = ['44', '49', '53', '72', '85']
     df_comm_pdl = df_comm[(df_comm["codgeo"].astype(str).str.startswith(cp_pdl[0])==True) |\
                         (df_comm['codgeo'].astype(str).str.startswith(cp_pdl[1])==True)|\
@@ -114,6 +116,17 @@ def get_full_medbase():
     # Placer la colonne code_insee en premier pour simplification d'affichage
     first_column = df_merge.pop('code_insee')
     df_merge.insert(0, 'code_insee', first_column)
+    
+    # récupérer les coordonnées gps des communes
+    df_gps_comm = df_gps_comm[((df_gps_comm["code_commune_INSEE"].str.startswith(cp_pdl[0])==True) |\
+                                        (df_gps_comm['code_commune_INSEE'].str.startswith(cp_pdl[1])==True)|\
+                                        (df_gps_comm['code_commune_INSEE'].str.startswith(cp_pdl[2])==True)|\
+                                        (df_gps_comm['code_commune_INSEE'].str.startswith(cp_pdl[3])==True)|\
+                                        (df_gps_comm['code_commune_INSEE'].str.startswith(cp_pdl[4])==True)) & \
+                                        (df_gps_comm['code_commune_INSEE'].apply(len) == 5)].copy().drop_duplicates().reset_index(drop=True)
+    df_gps_comm.columns = ["code_insee", "Lat_commune", "Lon_commune"]
+
+    df_merge = df_merge.merge(df_gps_comm, on="code_insee")
 
     #Transform lat, lon in float
     df_merge['Lat'] = df_merge['Lat'].astype(float)
@@ -125,7 +138,7 @@ def get_full_medbase():
 
     #Aggregate rows together:
     # Merge pour ajouter la colonne geometry sans aggrégat
-    prof_df = df_merge[["code_insee", "geometry"]].merge(df_merge.groupby('code_insee', as_index=False).agg(
+    prof_df = df_merge[["code_insee", "geometry", "Lat_commune", "Lon_commune"]].merge(df_merge.groupby('code_insee', as_index=False).agg(
         Population_2018=('P18_POP','mean'), 
         Deces_13_18= ('DECE1318','mean'),
         Naissances_13_18=('NAIS1318','mean'),
