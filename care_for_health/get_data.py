@@ -70,10 +70,8 @@ def merge_insee_med():
     df_merge = df_insee.merge(df_medecins, left_on="CODGEO", right_on="code_insee").drop(columns="CODGEO")
     
     # Placer la colonne code_insee en premier pour simplification d'affichage
-    cols = list(df_merge.columns)
-    index = df_merge.columns.get_loc("code_insee")
-    cols = [cols[index]] + cols[:index]
-    df_merge = df_merge[cols]
+    first_column = df_merge.pop('code_insee')
+    df_merge.insert(0, 'code_insee', first_column)
     
     return df_merge
 
@@ -81,6 +79,17 @@ def get_full_medbase():
     df = merge_insee_med()
     col_val = ['Médecin généraliste', 'Chirurgien-dentiste', 'Radiologue', 'Sage-femme', 'Ophtalmologiste', 'Cardiologue']
     short_df = df[df['Profession'].isin(col_val)].copy()
+    #communes avec leurs polygon (affichage de map)
+    df_comm = pd.read_csv("../raw_data/communes_fr.csv", delimiter=',', encoding='utf-8')[["codgeo", "geometry"]]
+    df_insee = read_base_insee()
+    
+    # Récupération des communes pdl
+    cp_pdl = ['44', '49', '53', '72', '85']
+    df_comm_pdl = df_comm[(df_comm["codgeo"].astype(str).str.startswith(cp_pdl[0])==True) |\
+                        (df_comm['codgeo'].astype(str).str.startswith(cp_pdl[1])==True)|\
+                        (df_comm['codgeo'].astype(str).str.startswith(cp_pdl[2])==True)|\
+                        (df_comm['codgeo'].astype(str).str.startswith(cp_pdl[3])==True)|\
+                        (df_comm['codgeo'].astype(str).str.startswith(cp_pdl[4])==True)].copy()
 
     #OneHotEncode on selected professions:
     encoder = OneHotEncoder(sparse=False)
@@ -89,34 +98,52 @@ def get_full_medbase():
     enc = encoder.categories_[0]
     short_df[enc[0]], short_df[enc[1]], short_df[enc[2]], short_df[enc[3]], short_df[enc[4]], short_df[enc[5]] = profession_encoded.T
 
+    # merge des communes sans médecins et ajout des polygon
+    df_merge = df_comm_pdl.merge(short_df, how="left", left_on="codgeo", right_on="code_insee")#.drop(columns="codgeo")
+
+    # empêcher la création de colonnes en double
+    same_cols = [col for col in df_insee.columns if col in df_merge.columns]
+    
+    # ajout des infos insee pour les communes sans médecins
+    df_merge = df_merge.drop(columns=same_cols).merge(df_insee, how="left", left_on="codgeo", right_on="CODGEO")
+    
+    # suppression de la colonne codegeo car doublon de code_insee
+    df_merge["code_insee"] = df_merge["codgeo"]
+    df_merge.drop(columns="codgeo", inplace=True)
+    
+    # Placer la colonne code_insee en premier pour simplification d'affichage
+    first_column = df_merge.pop('code_insee')
+    df_merge.insert(0, 'code_insee', first_column)
+
     #Transform lat, lon in float
-    short_df['Lat'] = short_df['Lat'].astype(float)
-    short_df['Long'] = short_df['Long'].astype(float)
+    df_merge['Lat'] = df_merge['Lat'].astype(float)
+    df_merge['Long'] = df_merge['Long'].astype(float)
 
     #Prepare dataset with stats for 'médecin généraliste'
     stats = feature_engineering.med_g_statistics()
-    short_df = feature_engineering.yearly_med_g_visits(short_df, stats)
+    df_merge = feature_engineering.yearly_med_g_visits(df_merge, stats)
 
     #Aggregate rows together:
-    prof_df = short_df.groupby('code_insee', as_index=False).agg(
+    # Merge pour ajouter la colonne geometry sans aggrégat
+    prof_df = df_merge[["code_insee", "geometry"]].merge(df_merge.groupby('code_insee', as_index=False).agg(
         Population_2018=('P18_POP','mean'), 
-        Décès_13_18= ('DECE1318','mean'),
+        Deces_13_18= ('DECE1318','mean'),
         Naissances_13_18=('NAIS1318','mean'),
-        Retraités_2018_55p=('C18_POP55P_CS7','mean'), 
+        Retraites_2018_55p=('C18_POP55P_CS7','mean'), 
         Population_2013=('P13_POP','mean'), 
-        Médiane_revenu=('MED19','mean'), 
-        Taux_pauvreté=('TP6019','mean'), 
+        Mediane_revenu=('MED19','mean'), 
+        Taux_pauvrete=('TP6019','mean'), 
         Lat=('Lat','mean'), 
         Lon=('Long','mean'), 
-        Besoin_annuel_visites_méd_g=('med_g_visites_annuelles', 'mean'),
-        Besoin_médecins=('besoin_medecins_g', 'mean'),
-        Médecin_généraliste=('Médecin généraliste','sum'), 
+        Besoin_annuel_visites_med_g=('med_g_visites_annuelles', 'mean'),
+        Besoin_medecins=('besoin_medecins_g', 'mean'),
+        Medecin_generaliste=('Médecin généraliste','sum'), 
         Cardiologue=('Cardiologue','sum'), 
         Chirurgien_dentiste=('Chirurgien-dentiste','sum'), 
         Ophtalmologiste=('Ophtalmologiste','sum'), 
         Radiologue=('Radiologue','sum'), 
         Sage_femme=('Sage-femme','sum'), 
-        )
+        ), how="left", on="code_insee").drop_duplicates().reset_index(drop=True)
     return prof_df
 
 
