@@ -6,7 +6,7 @@ import pandas as pd
 # Perform the operation on the entire dataset with calculate_cluster_df,
 # Apply computations (med requirements + available) on each code_insee
 
-def calculate_cluster_row(row, df, radius=30):
+def list_neighbors_by_row(row, df, radius=30):
     '''
     Return a list of neirest neighbors to a given INSEE code
     By default, radius=30 km
@@ -18,14 +18,14 @@ def calculate_cluster_row(row, df, radius=30):
     row.neighbors = neighbors
     return row
 
-def calculate_cluster_df(df, radius=30):
+def list_neighbors_by_df(df, radius=30):
     '''
     Return the DataFrame with reseted index (!), containing the list of neirest neighbors
     By default, radius=30 km
     '''
     df_ = df.copy().reset_index(drop=True)
     df_['neighbors']=0
-    df_ = df_.apply(lambda row: calculate_cluster_row(row, df_, radius=radius), axis=1)
+    df_ = df_.apply(lambda row: list_neighbors_by_row(row, df_, radius=radius), axis=1)
     return df_
 
 def get_meds_neighbors(df):
@@ -34,17 +34,21 @@ def get_meds_neighbors(df):
     Returns a DataFrame.
     '''
     df_return = df.copy()
-    df_merge = pd.DataFrame(columns=["code_insee", "neighbors_Besoin_medecins", "neighbors_nb_medecins", "neighbors_diff_meds"])
+    df_merge = pd.DataFrame(columns=["code_insee","taux_de_couverture", "neighbors_Besoin_medecins", "neighbors_nb_medecins", "neighbors_taux_de_couverture"])
     for row in df_return.iterrows():
         sum_besoin_meds = df_return.loc[(df_return["code_insee"].isin(row[1]["neighbors"]))]["Besoin_medecins"].sum()
         sum_meds = df_return.loc[(df_return["code_insee"].isin(row[1]["neighbors"]))]["Medecin_generaliste"].sum()
-        diff_meds = sum_besoin_meds - sum_meds
+        cover_rate_neighbors = sum_meds / sum_besoin_meds
         df_merge = df_merge.append({"code_insee": row[1]["code_insee"],
-                                    "neighbors_Besoin_medecins": sum_besoin_meds,
+                                   "neighbors_Besoin_medecins": sum_besoin_meds,
                                    "neighbors_nb_medecins": sum_meds,
-                                   "neighbors_diff_meds": diff_meds},
+                                   "neighbors_taux_de_couverture": cover_rate_neighbors},
                                    ignore_index=True)
-    return df_return.merge(df_merge, on="code_insee")
+    df_2 = df_return.merge(df_merge, on="code_insee")
+    df_2['taux_de_couverture']=0
+    df_2['taux_de_couverture']=df_2['Medecin_generaliste']/df_2['Besoin_medecins']
+    
+    return df_2
 
 ### ---------------- IsInPolygon Calculations: -------------------------
 # Transforms STR polygon to a list of 2-tuples

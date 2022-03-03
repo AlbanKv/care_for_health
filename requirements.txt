@@ -30,4 +30,4 @@ termcolor
 
 #add for project
 plotly
-json
+haversine

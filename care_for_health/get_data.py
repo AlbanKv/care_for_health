@@ -2,11 +2,23 @@ import pandas as pd
 import numpy as np
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder
-from care_for_health import feature_engineering
+from care_for_health import feature_engineering, preprocessing
 
 def get_med_pdl():
-    #import du fichier medecins_pdl présent dans raw_data
-    df = pd.read_csv("../raw_data/medecins_pdl.csv", delimiter=';', encoding='utf-8')
+    '''
+    Import du fichier medecins_pdl présent dans raw_data
+    '''
+    med_cols={
+    "Nature d'exercice": 'str',
+    "Nom du professionnel": 'str',
+    "Adresse": 'str',
+    "Profession": 'str',
+    "Coordonnées": 'str',
+    "Commune": 'str',
+    "code_insee": 'int',
+    "Département": 'str',
+    } 
+    df = pd.read_csv("../raw_data/medecins_pdl.csv", delimiter=';', encoding='utf-8', usecols=list(med_cols.keys()), dtype=med_cols)
     #df avec seulement les colonnes utiles :
     #'Nom du professionnel', 'Profession', "Nature d'exercice",
     # 'Coordonnées', 'Adresse', 'Commune','Département', 'code_insee'
@@ -21,33 +33,25 @@ def get_med_pdl():
 
     return medecins_pdl
 
-def read_laposte():
-    lp1 = pd.read_csv('../raw_data/laposte_hexasmal.csv', delimiter=';', encoding='utf-8')
-    lp1 = lp1.drop_duplicates()
-    # Drop des codes CORSE
-    lp_1 = lp1.drop((lp1[lp1['code_commune_insee'].astype(str).str.startswith('2A')==True]).index).copy()
-    lp_2 = lp_1.drop((lp_1[lp_1['code_commune_insee'].astype(str).str.startswith('2B')==True]).index).copy()    
-    return lp_2[['code_postal', 'code_commune_insee', 'nom_de_la_commune']].copy()
-
 def read_base_insee():
-    cod_var_retenus = [
-    'CODGEO',
-    'P18_POP',
-    'P18_POP0014',
-    'P18_POP1529',
-    'P18_POP3044',
-    'P18_POP4559',
-    'P18_POP6074',
-    'P18_POP7589',
-    'P18_POP90P',
-    'DECE1318',
-    'NAIS1318',
-    'C18_POP55P_CS7',
-    'P13_POP',
-    'MED19',
-    'TP6019',
-    ]
-    df_insee = pd.read_csv('../raw_data/base_insee.csv', delimiter=';', encoding='utf-8',  usecols=cod_var_retenus)
+    colonnes = {
+            'CODGEO': 'str', 
+            'P18_POP': 'float', 
+            'P18_POP0014': 'float', 
+            'P18_POP1529': 'float', 
+            'P18_POP3044': 'float',
+            'P18_POP4559': 'float', 
+            'P18_POP6074': 'float', 
+            'P18_POP7589': 'float',
+            'P18_POP90P': 'float', 
+            'DECE1318': 'float',
+            'NAIS1318': 'float', 
+            'C18_POP55P_CS7': 'float', 
+            'P13_POP': 'float', 
+            'MED19': 'float', 
+            'TP6019': 'float'
+            }
+    df_insee = pd.read_csv('../raw_data/base_insee.csv', delimiter=';', encoding='utf-8',  usecols=list(colonnes.keys()), dtype=colonnes)
     df_insee = df_insee[['CODGEO', 'P18_POP','P18_POP0014', 'P18_POP1529', 'P18_POP3044','P18_POP4559','P18_POP6074','P18_POP7589','P18_POP90P','DECE1318','NAIS1318','C18_POP55P_CS7','P13_POP', 'MED19', 'TP6019',]].copy()
     cp_pdl = ['44', '49', '53', '72', '85']
     df_insee['CODGEO'] = df_insee['CODGEO'].astype(str)
@@ -61,7 +65,9 @@ def read_base_insee():
 
 
 def merge_insee_med():
-    '''Merge les datasets des médecins_pdl avec le dataset insee afin de récupérer les coordonnées géographiques'''
+    '''
+    Merge les datasets des médecins_pdl avec le dataset insee afin de récupérer les coordonnées géographiques
+    '''
     df_insee = read_base_insee()
     df_medecins = get_med_pdl()
     
@@ -74,6 +80,7 @@ def merge_insee_med():
     df_merge.insert(0, 'code_insee', first_column)
     
     return df_merge
+
 
 def get_full_medbase():
     df = merge_insee_med()
@@ -146,8 +153,6 @@ def get_full_medbase():
         Population_2013=('P13_POP','mean'), 
         Mediane_revenu=('MED19','mean'), 
         Taux_pauvrete=('TP6019','mean'), 
-        Lat=('Lat','mean'), 
-        Lon=('Long','mean'), 
         Besoin_annuel_visites_med_g=('med_g_visites_annuelles', 'mean'),
         Besoin_medecins=('besoin_medecins_g', 'mean'),
         Medecin_generaliste=('Médecin généraliste','sum'), 
@@ -158,6 +163,21 @@ def get_full_medbase():
         Sage_femme=('Sage-femme','sum'), 
         ), how="left", on="code_insee").drop_duplicates().reset_index(drop=True)
     return prof_df
+
+def get_full_medbase_with_neighbors(radius=30, reduce_column_nb=True):
+    '''
+    Builds up the full medbase along with neighbors + cover rate for the neighbors population
+    '''
+    df = get_full_medbase()
+    df = preprocessing.list_neighbors_by_df(df, radius=radius)
+    df = preprocessing.get_meds_neighbors(df)
+    if reduce_column_nb==True:
+        df_ = df[['code_insee', 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018', 
+            'Besoin_annuel_visites_med_g', 'Besoin_medecins', 'Medecin_generaliste', 'taux_de_couverture', 
+            'neighbors', 'neighbors_Besoin_medecins', 'neighbors_nb_medecins', 'neighbors_taux_de_couverture']].copy()
+    else:
+        df_ = df.copy()
+    return df_
 
 
 '''
@@ -181,5 +201,14 @@ def get_insee():
     print("Il y a actuellement un merge avec le code postal. Si celui-ci n'est plus requis, ne pas tenir compte du message précédent")
 
     return df
+
+def read_laposte():
+    lp1 = pd.read_csv('../raw_data/laposte_hexasmal.csv', delimiter=';', encoding='utf-8')
+    lp1 = lp1.drop_duplicates()
+    # Drop des codes CORSE
+    lp_1 = lp1.drop((lp1[lp1['code_commune_insee'].astype(str).str.startswith('2A')==True]).index).copy()
+    lp_2 = lp_1.drop((lp_1[lp_1['code_commune_insee'].astype(str).str.startswith('2B')==True]).index).copy()    
+    return lp_2[['code_postal', 'code_commune_insee', 'nom_de_la_commune']].copy()
+
 
 '''
