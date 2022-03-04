@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder
 from care_for_health import feature_engineering, preprocessing
+from sklearn.neighbors import NearestNeighbors
 
 def get_med_pdl():
     '''
@@ -162,6 +163,8 @@ def get_full_medbase():
         Radiologue=('Radiologue','sum'), 
         Sage_femme=('Sage-femme','sum'), 
         ), how="left", on="code_insee").drop_duplicates().reset_index(drop=True)
+    prof_df['taux_de_couverture']= prof_df['Medecin_generaliste']/prof_df['Besoin_medecins']
+    
     return prof_df
 
 def get_full_medbase_with_neighbors(radius=30, reduce_column_nb=True):
@@ -179,7 +182,47 @@ def get_full_medbase_with_neighbors(radius=30, reduce_column_nb=True):
         df_ = df.copy()
     return df_
 
+def get_all_neighbors_by_csv(radius=1, name=None):
+    if not name:
+            name = "../raw_data/communes_neighbors.csv"
+    
+    try:
+        df_comms_neighbors = pd.read_csv(name, delimiter=',', encoding='utf-8')
+            
+    except FileNotFoundError:
+        create_dataframe_neighbor(radius, name)
+        
+        df_comms_neighbors = pd.read_csv(name, delimiter=',', encoding='utf-8')
+        
+    return df_comms_neighbors
 
+def get_all_neighbors(radius=1, name=None):
+    df_base = get_full_medbase()
+    df_comms_neighbors = pd.DataFrame(columns=["code_insee", "neighbors_code_insee", "distance", "taux_de_couverture"])
+        
+    rnc = NearestNeighbors(radius=radius, p=2)
+    rnc.fit(df_base[['Lat_commune', 'Lon_commune']])
+        
+    for index, row_base in df_base.iterrows():
+        closest = rnc.radius_neighbors(X=[[row_base.get('Lat_commune'), row_base.get('Lon_commune')]],radius=radius/80*8)
+            
+        # ignore le premier résultat qui est la commune elle-même
+        for i in range(1, len(closest[0][0])):
+            row_neighbor = df_base.loc[closest[1][0][i]]
+                
+            df_comms_neighbors.loc[len(df_comms_neighbors)] = {"code_insee":row_base.get("code_insee"), 
+                                    "neighbors_code_insee": row_neighbor.get("code_insee"),
+                                    "distance": closest[0][0][i], 
+                                    "taux_de_couverture": row_neighbor.get('taux_de_couverture')}
+            
+    return df_comms_neighbors
+
+def create_dataframe_neighbor(radius=1, nom=None):
+    if not name:
+            name = "../raw_data/communes_neighbors.csv"
+            
+    get_all_neighbors(radius).to_csv(nom, index=False)
+    
 '''
 Deprecated function
 '''
