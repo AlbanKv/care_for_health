@@ -217,11 +217,11 @@ def get_all_neighbors(radius=1, name=None):
             
     return df_comms_neighbors
 
-def create_dataframe_neighbor(radius=1, nom=None):
+def create_dataframe_neighbor(radius=1, name=None):
     if not name:
             name = "../raw_data/communes_neighbors.csv"
             
-    get_all_neighbors(radius).to_csv(nom, index=False)
+    get_all_neighbors(radius).to_csv(name, index=False)
     
 '''
 Deprecated function
