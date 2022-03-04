@@ -28,6 +28,26 @@ def list_neighbors_by_df(df, radius=30):
     df_ = df_.apply(lambda row: list_neighbors_by_row(row, df_, radius=radius), axis=1)
     return df_
 
+
+def get_meds_neighbors_row(row, df):
+    row.neighbors_Besoin_medecins = df.loc[(df['code_insee'].isin(row['neighbors']))]['Besoin_medecins'].sum()
+    row.neighbors_nb_medecins = df.loc[(df["code_insee"].isin(row["neighbors"]))]["Medecin_generaliste"].sum()
+    row.neighbors_taux_de_couverture = row.neighbors_nb_medecins / row.neighbors_Besoin_medecins
+    row.taux_de_couverture = row['Medecin_generaliste']/row['Besoin_medecins']
+    #print(row.taux_de_couverture)
+    return row
+
+
+def get_meds_neighbors_df(df):
+    df_=df.copy()
+    df_['neighbors_Besoin_medecins'] = 0
+    df_['neighbors_nb_medecins'] = 0
+    df_['neighbors_taux_de_couverture'] = 0
+    df_['taux_de_couverture'] = 0
+    df_ = df_.apply(lambda row: get_meds_neighbors_row(row,df_), axis=1)
+    return df_
+
+
 def get_meds_neighbors(df):
     '''
     Compute insee and medical informations, based on the nearest neighbors.
