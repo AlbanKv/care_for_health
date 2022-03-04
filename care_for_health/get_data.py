@@ -170,7 +170,7 @@ def get_full_medbase_with_neighbors(radius=30, reduce_column_nb=True):
     '''
     df = get_full_medbase()
     df = preprocessing.list_neighbors_by_df(df, radius=radius)
-    df = preprocessing.get_meds_neighbors(df)
+    df = preprocessing.get_meds_neighbors_df(df)
     if reduce_column_nb==True:
         df_ = df[['code_insee', 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018', 
             'Besoin_annuel_visites_med_g', 'Besoin_medecins', 'Medecin_generaliste', 'taux_de_couverture', 
