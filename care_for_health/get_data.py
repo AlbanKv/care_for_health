@@ -5,7 +5,23 @@ from sklearn.preprocessing import OneHotEncoder
 from care_for_health import feature_engineering, preprocessing
 from sklearn.neighbors import NearestNeighbors
 
-def get_med_pdl():
+def clean_data():
+    """
+    Supprime les médecins sans location
+    """
+    df = pd.read_csv("../raw_data/medecins_ge_fr.csv", delimiter=';', encoding='utf-8')
+    
+    df.dropna(subset=["code_insee"], inplace=True)
+    
+    # Correction erreur Sannerville
+    df.loc[df["code_insee"] == "14666", "Département"] = 14.0
+    df.loc[df["code_insee"] == "14666", "Code INSEE Région"] = 28.0
+    
+    df.reset_index(drop=True).to_csv("../raw_data/medecins_ge_fr_clean.csv", index=False)
+    
+    return df
+
+def get_med():
     '''
     Import du fichier medecins_pdl présent dans raw_data
     '''
@@ -16,25 +32,26 @@ def get_med_pdl():
     "Profession": 'str',
     "Coordonnées": 'str',
     "Commune": 'str',
-    "code_insee": 'int',
+    "code_insee": 'str',
     "Département": 'str',
+    "Code INSEE Région": "str"
     } 
-    df = pd.read_csv("../raw_data/medecins_pdl.csv", delimiter=';', encoding='utf-8', usecols=list(med_cols.keys()), dtype=med_cols)
+    df = pd.read_csv("../raw_data/medecins_ge_fr_clean.csv", delimiter=',', encoding='utf-8', usecols=list(med_cols.keys()), dtype=med_cols)
+    
     #df avec seulement les colonnes utiles :
     #'Nom du professionnel', 'Profession', "Nature d'exercice",
     # 'Coordonnées', 'Adresse', 'Commune','Département', 'code_insee'
-    df_2 = df[['Nom du professionnel', 'Profession', "Nature d'exercice",'Coordonnées', 'Adresse', 'Commune','Département', 'code_insee']].copy()
+    df_2 = df[['Nom du professionnel', 'Profession', "Nature d'exercice",'Coordonnées', 'Adresse', 'Commune','Département', 'code_insee', "Code INSEE Région"]].copy()
     #cleaning doublons
-    df_3= df_2.drop_duplicates().copy()
+    df_3= df_2.drop_duplicates().reset_index(drop=True).copy()
     # séparation des Coordonnées en Latitude, Longitude
     df_3[['Lat','Long']] = df_3["Coordonnées"].str.split(",",expand=True)
     #dataframe prêt
-    medecins_pdl = df_3[['Nom du professionnel', 'Profession', "Nature d'exercice",'Lat','Long', 'Adresse', 'Commune','Département', 'code_insee']].copy()
-    medecins_pdl["code_insee"] = medecins_pdl["code_insee"].astype(str)
+    medecins = df_3[['Nom du professionnel', 'Profession', "Nature d'exercice",'Lat','Long', 'Adresse', 'Commune','Département', 'code_insee', "Code INSEE Région"]].copy()
 
-    return medecins_pdl
-
-def read_base_insee():
+    return medecins
+#['44', '49', '53', '72', '85']
+def read_base_insee(cp_list= None):
     colonnes = {
             'CODGEO': 'str', 
             'P18_POP': 'float', 
@@ -54,13 +71,13 @@ def read_base_insee():
             }
     df_insee = pd.read_csv('../raw_data/base_insee.csv', delimiter=';', encoding='utf-8',  usecols=list(colonnes.keys()), dtype=colonnes)
     df_insee = df_insee[['CODGEO', 'P18_POP','P18_POP0014', 'P18_POP1529', 'P18_POP3044','P18_POP4559','P18_POP6074','P18_POP7589','P18_POP90P','DECE1318','NAIS1318','C18_POP55P_CS7','P13_POP', 'MED19', 'TP6019',]].copy()
-    cp_pdl = ['44', '49', '53', '72', '85']
     df_insee['CODGEO'] = df_insee['CODGEO'].astype(str)
-    df_insee = df_insee[(df_insee['CODGEO'].astype(str).str.startswith(cp_pdl[0])==True)|\
+ 
+    """df_insee = df_insee[(df_insee['CODGEO'].astype(str).str.startswith(cp)==True)|\
             (df_insee['CODGEO'].astype(str).str.startswith(cp_pdl[1])==True)|\
             (df_insee['CODGEO'].astype(str).str.startswith(cp_pdl[2])==True)|\
             (df_insee['CODGEO'].astype(str).str.startswith(cp_pdl[3])==True)|\
-            (df_insee['CODGEO'].astype(str).str.startswith(cp_pdl[4])==True)].copy()
+            (df_insee['CODGEO'].astype(str).str.startswith(cp_pdl[4])==True)].copy()"""
     df_insee = df_insee.loc[df_insee['CODGEO'].astype(str).str.len()==5].copy()
     return df_insee
 
@@ -70,7 +87,7 @@ def merge_insee_med():
     Merge les datasets des médecins_pdl avec le dataset insee afin de récupérer les coordonnées géographiques
     '''
     df_insee = read_base_insee()
-    df_medecins = get_med_pdl()
+    df_medecins = get_med()
     
     # Merge 
     # On supprime la colonne CODGEO car doublon de code_insee
@@ -79,14 +96,34 @@ def merge_insee_med():
     # Placer la colonne code_insee en premier pour simplification d'affichage
     first_column = df_merge.pop('code_insee')
     df_merge.insert(0, 'code_insee', first_column)
+    second_col = df_merge.pop('Code INSEE Région')
+    df_merge.insert(1, 'Code INSEE Région', second_col)
     
     return df_merge
 
 
-def get_full_medbase():
+def get_full_medbase(region=None):
+    """
+    region = liste des régions à selectionner
+             par défaut séléctionne toutes les régions de France métropole
+             
+    region_dict = {'84':"Auvergne-Rhône-Alpes",
+                   '27':"Bourgogne-Franche-Comté",
+                   '53':"Bretagne",
+                   '24':"Centre-Val de Loire",
+                   '94':"Corse",
+                   '44':"Grand Est",
+                   '32':"Hauts-de-France",
+                   '11':"Île-de-France",
+                   '28':"Normandie",
+                   '75':"Nouvelle-Aquitaine",
+                   '76':"Occitanie",
+                   '52':"Pays de la Loire",
+                   '93':"Provence-Alpes-Côte d'Azur",}
+    """
     df = merge_insee_med()
-    col_val = ['Médecin généraliste', 'Chirurgien-dentiste', 'Radiologue', 'Sage-femme', 'Ophtalmologiste', 'Cardiologue']
-    short_df = df[df['Profession'].isin(col_val)].copy()
+    col_val = ['Médecin généraliste']#, 'Chirurgien-dentiste', 'Radiologue', 'Sage-femme', 'Ophtalmologiste', 'Cardiologue']
+    #short_df = df[df['Profession'].isin(col_val)].copy()
     #communes avec leurs polygon (affichage de map)
     df_comm = pd.read_csv("../raw_data/communes_fr.csv", delimiter=',', encoding='utf-8')[["codgeo", "geometry"]]
     df_insee = read_base_insee()
@@ -94,22 +131,23 @@ def get_full_medbase():
     df_gps_comm = pd.read_csv('../raw_data/communes_gps.csv', delimiter=',', encoding='utf-8')[["code_commune_INSEE", "latitude", "longitude"]]
     
     # Récupération des communes pdl (polygon)
-    cp_pdl = ['44', '49', '53', '72', '85']
+    """cp_pdl = ['44', '49', '53', '72', '85']
     df_comm_pdl = df_comm[(df_comm["codgeo"].astype(str).str.startswith(cp_pdl[0])==True) |\
                         (df_comm['codgeo'].astype(str).str.startswith(cp_pdl[1])==True)|\
                         (df_comm['codgeo'].astype(str).str.startswith(cp_pdl[2])==True)|\
                         (df_comm['codgeo'].astype(str).str.startswith(cp_pdl[3])==True)|\
-                        (df_comm['codgeo'].astype(str).str.startswith(cp_pdl[4])==True)].copy()
+                        (df_comm['codgeo'].astype(str).str.startswith(cp_pdl[4])==True)].copy()"""
 
     #OneHotEncode on selected professions:
-    encoder = OneHotEncoder(sparse=False)
+    """ encoder = OneHotEncoder(sparse=False)
     encoder.fit(short_df[['Profession']])
     profession_encoded = encoder.transform(short_df[['Profession']])
     enc = encoder.categories_[0]
     short_df[enc[0]], short_df[enc[1]], short_df[enc[2]], short_df[enc[3]], short_df[enc[4]], short_df[enc[5]] = profession_encoded.T
-
+    """
     # merge des communes sans médecins et ajout des polygon
-    df_merge = df_comm_pdl.merge(short_df, how="left", left_on="codgeo", right_on="code_insee")#.drop(columns="codgeo")
+    #df_merge = df_comm_pdl.merge(short_df, how="left", left_on="codgeo", right_on="code_insee")#.drop(columns="codgeo")
+    df_merge = df_comm.merge(df, how="left", left_on="codgeo", right_on="code_insee")
 
     # empêcher la création de colonnes en double
     same_cols = [col for col in df_insee.columns if col in df_merge.columns]
@@ -126,12 +164,13 @@ def get_full_medbase():
     df_merge.insert(0, 'code_insee', first_column)
     
     # récupérer les coordonnées gps des communes
-    df_gps_comm = df_gps_comm[((df_gps_comm["code_commune_INSEE"].str.startswith(cp_pdl[0])==True) |\
+    """df_gps_comm = df_gps_comm[((df_gps_comm["code_commune_INSEE"].str.startswith(cp_pdl[0])==True) |\
                                         (df_gps_comm['code_commune_INSEE'].str.startswith(cp_pdl[1])==True)|\
                                         (df_gps_comm['code_commune_INSEE'].str.startswith(cp_pdl[2])==True)|\
                                         (df_gps_comm['code_commune_INSEE'].str.startswith(cp_pdl[3])==True)|\
                                         (df_gps_comm['code_commune_INSEE'].str.startswith(cp_pdl[4])==True)) & \
-                                        (df_gps_comm['code_commune_INSEE'].apply(len) == 5)].copy().drop_duplicates().reset_index(drop=True)
+                                        (df_gps_comm['code_commune_INSEE'].apply(len) == 5)].copy().drop_duplicates().reset_index(drop=True)"""
+    df_gps_comm = df_gps_comm.drop_duplicates().reset_index(drop=True)
     df_gps_comm.columns = ["code_insee", "Lat_commune", "Lon_commune"]
 
     df_merge = df_merge.merge(df_gps_comm, on="code_insee")
@@ -139,6 +178,22 @@ def get_full_medbase():
     #Transform lat, lon in float
     df_merge['Lat'] = df_merge['Lat'].astype(float)
     df_merge['Long'] = df_merge['Long'].astype(float)
+    
+    
+    df_merge.rename(columns={"Code INSEE Région": "code_regions"}, inplace=True)
+    
+    df_corres = df_merge[["code_insee", "code_regions"]].drop_duplicates().dropna()
+    df_corres.rename(columns={"code_regions": "code_reg"}, inplace=True)
+    df_corres["code_dep"] = df_corres["code_insee"].apply(lambda x: x[:2])
+    df_corres = df_corres.drop(columns="code_insee").drop_duplicates().reset_index(drop=True)
+    
+    df_merge["code_dpt"] = df_merge["code_insee"].apply(lambda x: x[:2])
+    df_merge["code_regions"] = df_merge.merge(df_corres, left_on="code_dpt", right_on="code_dep")["code_reg"].astype(float).astype(int)
+
+    # par défaut : régions de métropole
+    if not region:
+        region = [11,24,27,28,32,44,52,53,75,76,84,93,94]
+    df_merge = df_merge[df_merge["code_regions"].isin(region)]
 
     #Prepare dataset with stats for 'médecin généraliste'
     stats = feature_engineering.med_g_statistics()
@@ -146,7 +201,7 @@ def get_full_medbase():
 
     #Aggregate rows together:
     # Merge pour ajouter la colonne geometry sans aggrégat
-    prof_df = df_merge[["code_insee", "geometry", "Lat_commune", "Lon_commune"]].merge(df_merge.groupby('code_insee', as_index=False).agg(
+    prof_df = df_merge[["code_insee", "code_regions", "code_dpt", "geometry", "Lat_commune", "Lon_commune"]].merge(df_merge.groupby('code_insee', as_index=False).agg(
         Population_2018=('P18_POP','mean'), 
         Deces_13_18= ('DECE1318','mean'),
         Naissances_13_18=('NAIS1318','mean'),
@@ -156,16 +211,40 @@ def get_full_medbase():
         Taux_pauvrete=('TP6019','mean'), 
         Besoin_annuel_visites_med_g=('med_g_visites_annuelles', 'mean'),
         Besoin_medecins=('besoin_medecins_g', 'mean'),
-        Medecin_generaliste=('Médecin généraliste','sum'), 
-        Cardiologue=('Cardiologue','sum'), 
-        Chirurgien_dentiste=('Chirurgien-dentiste','sum'), 
-        Ophtalmologiste=('Ophtalmologiste','sum'), 
-        Radiologue=('Radiologue','sum'), 
-        Sage_femme=('Sage-femme','sum'), 
+        Medecin_generaliste=('Profession','count'), 
         ), how="left", on="code_insee").drop_duplicates().reset_index(drop=True)
+    
     prof_df['taux_de_couverture']= prof_df['Medecin_generaliste']/prof_df['Besoin_medecins']
     
+    prof_df[prof_df.select_dtypes(include=np.number).columns.tolist()] = prof_df.select_dtypes(include=np.number).apply(lambda x: np.round(x, 2))
+
+    #correction du NaN pour les communes sans besoin de médecins
+    prof_df.loc[prof_df["Besoin_medecins"] == 0, "taux_de_couverture"] = 0
+    
     return prof_df
+
+
+def get_data_region():
+    df = get_full_medbase()
+    df_ = df.groupby('code_regions', as_index=False).agg(
+            Population_2018=('Population_2018','sum'),
+            Deces_13_18= ('Deces_13_18','sum'),
+            Naissances_13_18=('Naissances_13_18','sum'),
+            Retraites_2018_55p=('Retraites_2018_55p','sum'),
+            Population_2013=('Population_2013','sum'),
+            Mediane_revenu=('Mediane_revenu','mean'),
+            Taux_pauvrete=('Taux_pauvrete','mean'),
+            Besoin_annuel_visites_med_g=('Besoin_annuel_visites_med_g', 'sum'),
+            Besoin_medecins=('Besoin_medecins', 'sum'),
+            Medecin_generaliste=('Medecin_generaliste','sum'),
+            taux_de_couverture=('taux_de_couverture','mean'),
+            ).drop_duplicates().reset_index(drop=True)
+    df_['taux_de_couverture']=0
+    df_['taux_de_couverture']=round(df_['Medecin_generaliste']/df_['Besoin_medecins'],2)
+    
+    df_[df_.select_dtypes(include=np.number).columns.tolist()] = df_.select_dtypes(include=np.number).apply(lambda x: np.round(x, 2))
+    
+    return df_
 
 def get_full_medbase_with_neighbors(radius=30, reduce_column_nb=True):
     '''
