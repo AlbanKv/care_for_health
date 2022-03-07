@@ -121,7 +121,7 @@ def algorithm_all_available_med(df, selection_medecins='tous', sortby='rate', ra
     print(f"Gain en points de: {(output - baseline)*100:.3f}%\navant : {baseline*100:.2f}% - après : {output.max()*100:.2f}%")
     return df_, recap
 
-class repartissor(BaseEstimator, ClassifierMixin):
+class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
     def __init__(self, selection_medecins='tous', sortby='calculated', radius=15, moy_region=0.84, recalcul=True, poids_des_voisins=0.1, nb_voisins_minimum=3):
         self.selection_medecins=selection_medecins
         self.sortby=sortby
@@ -228,14 +228,14 @@ class repartissor(BaseEstimator, ClassifierMixin):
             'distance_moyenne': np.array(distance).mean(), 
             'distance_min': np.array(distance).min(), 
             'distance_max': np.array(distance).max(),
-            }
+            'médecins_déplacés': len(distance)}
         #recap['nb_neighbors'] = neighbors_stats
 
-        print(f"Statistiques médecins déplacés:\n - Moyenne: {np.array(distance).mean():.2f}\n - Min: {np.array(distance).min():.2f}\n - Max: {np.array(distance).max():.2f}")
-        print(f"Médecins déplacés : {len(distance)}\n")
-        print(f"Gain en points de: {(output - baseline)*100:.3f}%\navant : {baseline*100:.2f}% - après : {output.max()*100:.2f}%")
-        print(f"Nb de communes en déficit avant : {baseline_communes} - après : {output_communes}\n")
-        return self#.df_[['code_insee', 'Medecin_generaliste', 'neighbors_taux_de_couverture']]#, recap
+        #print(f"Statistiques médecins déplacés:\n - Moyenne: {np.array(distance).mean():.2f}\n - Min: {np.array(distance).min():.2f}\n - Max: {np.array(distance).max():.2f}")
+        #print(f"Médecins déplacés : {len(distance)}\n")
+        #print(f"Gain en points de: {(output - baseline)*100:.3f}%\navant : {baseline*100:.2f}% - après : {output.max()*100:.2f}%")
+        #print(f"Nb de communes en déficit avant : {baseline_communes} - après : {output_communes}\n")
+        return self.df_[['code_insee', 'Medecin_generaliste', 'neighbors_taux_de_couverture']]#, recap
         #closest = np.argmin(euclidean_distances(X, self.X_), axis=1)
         #return self.y_[closest]
 
@@ -256,7 +256,10 @@ class repartissor(BaseEstimator, ClassifierMixin):
         return self
     
     def score(self, X):
-        return self.recap
+        return self.recap['scores']
+    
+    def distance(self, X):
+        return self.recap['distance']
 
 
 def algorithm_V2(df, selection_medecins='tous', sortby='calculated', radius=15, moy_region=0.84, recalcul=True, poids_des_voisins=0.1, nb_voisins_minimum=3):
