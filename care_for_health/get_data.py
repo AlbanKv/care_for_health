@@ -179,13 +179,22 @@ def get_full_medbase():
     
     return prof_df
 
-def get_full_medbase_with_neighbors(radius=15, reduce_column_nb=True):
+def get_full_medbase_with_neighbors(radius=15, reduce_column_nb=True, neighbors_filename='../raw_data/communes_neighbors.csv'):
     '''
     Builds up the full medbase along with neighbors + cover rate for the neighbors population
     '''
     df = get_full_medbase()
-    df = preprocessing.list_neighbors_by_df(df, radius=radius*0.013276477888701137)
+    neighbors = get_all_neighbors_by_csv(radius=radius, name=neighbors_filename)
+    neighbors[['neighbors_code_insee']]=neighbors[['neighbors_code_insee']].astype('str')
+
+    middle_df_neighbors = neighbors.groupby('code_insee', as_index=False).agg({'neighbors_code_insee': lambda x: list(x)})
+    middle_df_neighbors['code_insee']=middle_df_neighbors['code_insee'].astype('str')
+    
+    df = pd.merge(left=df, right=middle_df_neighbors, how='left', left_on='code_insee', right_on='code_insee')
+    df.rename(columns={'neighbors_code_insee':'neighbors'}, inplace=True)
+    
     df = preprocessing.get_meds_neighbors_df(df)
+    
     if reduce_column_nb==True:
         df_ = df[['code_insee', 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018', 
             'Besoin_annuel_visites_med_g', 'Besoin_medecins', 'Medecin_generaliste', 'taux_de_couverture', 
@@ -265,5 +274,17 @@ def read_laposte():
     lp_2 = lp_1.drop((lp_1[lp_1['code_commune_insee'].astype(str).str.startswith('2B')==True]).index).copy()    
     return lp_2[['code_postal', 'code_commune_insee', 'nom_de_la_commune']].copy()
 
+def get_full_medbase_with_neighbors(radius=15, reduce_column_nb=True):
+    Builds up the full medbase along with neighbors + cover rate for the neighbors population
+    df = get_full_medbase()
+    df = preprocessing.list_neighbors_by_df(df, radius=radius*0.013276477888701137)
+    df = preprocessing.get_meds_neighbors_df(df)
+    if reduce_column_nb==True:
+        df_ = df[['code_insee', 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018', 
+            'Besoin_annuel_visites_med_g', 'Besoin_medecins', 'Medecin_generaliste', 'taux_de_couverture', 
+            'neighbors', 'neighbors_Besoin_medecins', 'neighbors_nb_medecins', 'neighbors_taux_de_couverture']].copy()
+    else:
+        df_ = df.copy()
+    return df_
 
 '''

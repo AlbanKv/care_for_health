@@ -30,7 +30,7 @@ def list_neighbors_by_df(df, radius=30):
 
 
 def get_meds_neighbors_row(row, df):
-    row.neighbors_Besoin_medecins = df.loc[(df['code_insee'].isin(row['neighbors'].tolist()))]['Besoin_medecins'].sum()
+    row.neighbors_Besoin_medecins = df.loc[(df['code_insee'].isin(row['neighbors']))]['Besoin_medecins'].sum()
     row.neighbors_nb_medecins = df.loc[(df["code_insee"].isin(row["neighbors"]))]["Medecin_generaliste"].sum()
     row.neighbors_taux_de_couverture = row.neighbors_nb_medecins / row.neighbors_Besoin_medecins
     row.taux_de_couverture = row['Medecin_generaliste']/row['Besoin_medecins']
@@ -44,7 +44,6 @@ def get_meds_neighbors_df(df):
     df_['neighbors_nb_medecins'] = 0
     df_['neighbors_taux_de_couverture'] = 0
     df_['taux_de_couverture'] = 0
-    print('toto')
     df_ = df_.apply(lambda row: get_meds_neighbors_row(row,df_), axis=1)
     return df_
 
