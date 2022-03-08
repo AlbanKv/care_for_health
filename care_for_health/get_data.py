@@ -320,11 +320,18 @@ def get_full_medbase_with_neighbors(radius=30, region=None, reduce_column_nb=Tru
     return df_
 
 def get_all_neighbors_by_csv(radius=15, name=None):
-    if not name:
-            name = "../raw_data/communes_neighbors.csv"
+    if not name:        
+        name = "../raw_data/communes_neighbors.csv"
 
     try:
-        df_comms_neighbors = pd.read_csv(name, delimiter=',', encoding='utf-8')
+        nei_cols = {
+            'code_insee': 'str',
+            "neighbors_code_insee": "str",
+            'distance': 'float',
+            'taux_de_couverture': 'float',
+            }
+        
+        df_comms_neighbors = pd.read_csv(name, delimiter=',', encoding='utf-8', usecols=list(nei_cols.keys()), dtype=nei_cols)
 
     except FileNotFoundError:
         create_dataframe_neighbor(radius, name)
@@ -336,8 +343,9 @@ def get_all_neighbors_by_csv(radius=15, name=None):
 
 def get_all_neighbors(radius=15, name=None):
     df_base = get_full_medbase()
-    df_comms_neighbors = pd.DataFrame(columns=["code_insee", "neighbors_code_insee", "distance", "taux_de_couverture"])
-
+    
+    list_neighbors = []
+    
     rnc = NearestNeighbors(radius=radius*0.013276477888701137, p=2)
     rnc.fit(df_base[['Lat_commune', 'Lon_commune']])
 
@@ -348,11 +356,12 @@ def get_all_neighbors(radius=15, name=None):
         for i in range(0, len(closest[0][0])):
             row_neighbor = df_base.loc[closest[1][0][i]]
 
-            df_comms_neighbors.loc[len(df_comms_neighbors)] = {"code_insee":row_base.get("code_insee"),
+            list_neighbors.append({"code_insee":row_base.get("code_insee"),
                                     "neighbors_code_insee": row_neighbor.get("code_insee"),
                                     "distance": closest[0][0][i],
-                                    "taux_de_couverture": row_neighbor.get('taux_de_couverture')}
+                                    "taux_de_couverture": row_neighbor.get('taux_de_couverture')})
 
+    df_comms_neighbors = pd.DataFrame(columns=["code_insee", "neighbors_code_insee", "distance", "taux_de_couverture"], data=list_neighbors)
     return df_comms_neighbors
 
 
