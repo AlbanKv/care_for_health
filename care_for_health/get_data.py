@@ -121,6 +121,13 @@ def get_full_medbase(region=None):
                    '52':"Pays de la Loire",
                    '93':"Provence-Alpes-Côte d'Azur",}
     """
+    
+    try:
+        pd.read_csv("../raw_data/medecins_ge_fr_clean.csv", delimiter=',', encoding='utf-8')
+            
+    except FileNotFoundError:
+        clean_data()
+    
     df = merge_insee_med()
     col_val = ['Médecin généraliste']#, 'Chirurgien-dentiste', 'Radiologue', 'Sage-femme', 'Ophtalmologiste', 'Cardiologue']
     #short_df = df[df['Profession'].isin(col_val)].copy()
