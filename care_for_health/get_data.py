@@ -24,7 +24,7 @@ def clean_data():
 def get_med():
     '''
     Import du fichier medecins_pdl présent dans raw_data
-    /!\ Fichier à généraliser pour toute la France, par exemple avec un paramètre facultatif 'Région'. 
+    /!\ Fichier à généraliser pour toute la France, par exemple avec un paramètre facultatif 'Région'.
     Si le paramètre est rempli, seules les données de la Région seraient importées.
     '''
     med_cols={
@@ -72,7 +72,7 @@ def read_base_insee(cp_list= None):
             'TP6019': 'float'
             }
     df_insee = pd.read_csv('../raw_data/base_insee.csv', delimiter=';', encoding='utf-8',  usecols=list(colonnes.keys()), dtype=colonnes)
-    df_insee = df_insee[['CODGEO', 'P18_POP','P18_POP0014', 'P18_POP1529', 'P18_POP3044','P18_POP4559','P18_POP6074','P18_POP7589','P18_POP90P','DECE1318','NAIS1318','C18_POP55P_CS7','P13_POP', 'MED19', 'TP6019',]].copy()
+    df_insee = df_insee[['CODGEO', 'P18_POP','P18_POP0014', 'P18_POP1529', 'P18_POP3044','P18_POP4559','P18_POP6074','P18_POP7589','P18_POP90P','DECE1318','NAIS1318','C18_POP55P_CS7','P13_POP', 'MED19', 'TP6019']].copy()
     df_insee['CODGEO'] = df_insee['CODGEO'].astype(str)
 
     """df_insee = df_insee[(df_insee['CODGEO'].astype(str).str.startswith(cp)==True)|\
@@ -137,7 +137,12 @@ def get_full_medbase(region=None):
     df_comm = pd.read_csv("../raw_data/communes_fr.csv", delimiter=',', encoding='utf-8')[["codgeo", "geometry"]]
     df_insee = read_base_insee()
     #long/lat des communes
-    df_gps_comm = pd.read_csv('../raw_data/communes_gps.csv', delimiter=',', encoding='utf-8')[["code_commune_INSEE", "latitude", "longitude"]]
+    gps_cols = {
+            'code_commune_INSEE': 'str',
+            'latitude': 'float',
+            'longitude': 'float',
+            }
+    df_gps_comm = pd.read_csv('../raw_data/communes_gps.csv', delimiter=',', encoding='utf-8', usecols=list(gps_cols.keys()), dtype=gps_cols)[["code_commune_INSEE", "latitude", "longitude"]]
 
     # Récupération des communes pdl (polygon)
     """cp_pdl = ['44', '49', '53', '72', '85']
@@ -229,9 +234,9 @@ def get_full_medbase(region=None):
         Population_2018=('P18_POP','mean'),
         Deces_13_18= ('DECE1318','mean'),
         Naissances_13_18=('NAIS1318','mean'),
-        Retraites_2018_55p=('C18_POP55P_CS7','mean'), 
-        Population_2013=('P13_POP','mean'), 
-        Mediane_revenu=('MED19','mean'), 
+        Retraites_2018_55p=('C18_POP55P_CS7','mean'),
+        Population_2013=('P13_POP','mean'),
+        Mediane_revenu=('MED19','mean'),
         Besoin_annuel_visites_med_g=('med_g_visites_annuelles', 'mean'),
         Besoin_medecins=('besoin_medecins_g', 'mean'),
         Medecin_generaliste=('Profession','count'),
@@ -277,7 +282,7 @@ def get_full_medbase_with_neighbors(radius=30, region=None, reduce_column_nb=Tru
     """
     region = liste des régions à selectionner
              par défaut séléctionne toutes les régions de France métropole
-             
+
     region_dict = {'84':"Auvergne-Rhône-Alpes",
                    '27':"Bourgogne-Franche-Comté",
                    '53':"Bretagne",
@@ -298,12 +303,12 @@ def get_full_medbase_with_neighbors(radius=30, region=None, reduce_column_nb=Tru
 
     middle_df_neighbors = neighbors.groupby('code_insee', as_index=False).agg({'neighbors_code_insee': lambda x: list(x)})
     middle_df_neighbors['code_insee']=middle_df_neighbors['code_insee'].astype('str')
-    
+
     df = pd.merge(left=df, right=middle_df_neighbors, how='left', left_on='code_insee', right_on='code_insee')
     df.rename(columns={'neighbors_code_insee':'neighbors'}, inplace=True)
-    
+
     df = preprocessing.get_meds_neighbors_df(df)
-    
+
     if reduce_column_nb==True:
         df_ = df[['code_insee', 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018',
             'Besoin_annuel_visites_med_g', 'Besoin_medecins', 'Medecin_generaliste', 'taux_de_couverture',
@@ -330,10 +335,10 @@ def get_all_neighbors_by_csv(radius=15, name=None):
 def get_all_neighbors(radius=15, name=None):
     df_base = get_full_medbase()
     df_comms_neighbors = pd.DataFrame(columns=["code_insee", "neighbors_code_insee", "distance", "taux_de_couverture"])
-    
+
     rnc = NearestNeighbors(radius=radius*0.013276477888701137, p=2)
     rnc.fit(df_base[['Lat_commune', 'Lon_commune']])
-    
+
     for index, row_base in df_base.iterrows():
         closest = rnc.radius_neighbors(X=[[row_base.get('Lat_commune'), row_base.get('Lon_commune')]],radius=radius*0.013276477888701137)
 
@@ -391,8 +396,8 @@ def get_full_medbase_with_neighbors(radius=15, reduce_column_nb=True):
     df = preprocessing.list_neighbors_by_df(df, radius=radius*0.013276477888701137)
     df = preprocessing.get_meds_neighbors_df(df)
     if reduce_column_nb==True:
-        df_ = df[['code_insee', 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018', 
-            'Besoin_annuel_visites_med_g', 'Besoin_medecins', 'Medecin_generaliste', 'taux_de_couverture', 
+        df_ = df[['code_insee', 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018',
+            'Besoin_annuel_visites_med_g', 'Besoin_medecins', 'Medecin_generaliste', 'taux_de_couverture',
             'neighbors', 'neighbors_Besoin_medecins', 'neighbors_nb_medecins', 'neighbors_taux_de_couverture']].copy()
     else:
         df_ = df.copy()
