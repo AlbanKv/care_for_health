@@ -228,7 +228,12 @@ def get_full_medbase(region=None):
     
     prof_df['taux_de_couverture']= prof_df['Medecin_generaliste']/prof_df['Besoin_medecins']
     
-    prof_df[prof_df.select_dtypes(include=np.number).columns.tolist()] = prof_df.select_dtypes(include=np.number).apply(lambda x: np.round(x, 2))
+    
+    #arrondir à 2 chiffres après la virgule pour les cols numériques 
+    cols_nums = prof_df.select_dtypes(include=np.number).columns.tolist()
+    cols_nums.remove("Lat_commune")
+    cols_nums.remove("Lon_commune")
+    prof_df[cols_nums] = prof_df[cols_nums].apply(lambda x: np.round(x, 2))
 
     #correction du NaN pour les communes sans besoin de médecins
     prof_df.loc[prof_df["Besoin_medecins"] == 0, "taux_de_couverture"] = 0
