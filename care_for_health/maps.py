@@ -51,8 +51,8 @@ def chloropleth_map_communes(df_communes,code_insee_str,taux_couv_str):
             featureidkey = "properties.codgeo", #Assign feature key : code INSEE
             locations = df_communes[code_insee_str], #Assign location data : code INSEE
             z = df_communes[taux_couv_str], #Assign information data : taux de couverture
-            zmin=df_communes[taux_couv_str].min(), zmax=df_communes[taux_couv_str].max(),
-            colorscale = 'viridis',
+            zmin=0, zmax=1.5,
+            colorscale = [[0, 'rgb(0,0,255)'], [0.3, 'rgb(0,255,0)'], [1, 'rgb(255,0,0)']],
             showscale = True))
 
     fig.update_layout(
