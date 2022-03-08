@@ -137,11 +137,13 @@ def get_full_medbase(region=None):
     df_comm = pd.read_csv("../raw_data/communes_fr.csv", delimiter=',', encoding='utf-8')[["codgeo", "geometry"]]
     df_insee = read_base_insee()
     #long/lat des communes
+
     gps_cols = {
             'code_commune_INSEE': 'str',
             'latitude': 'float',
             'longitude': 'float',
             }
+
     df_gps_comm = pd.read_csv('../raw_data/communes_gps.csv', delimiter=',', encoding='utf-8', usecols=list(gps_cols.keys()), dtype=gps_cols)[["code_commune_INSEE", "latitude", "longitude"]]
 
     # Récupération des communes pdl (polygon)
