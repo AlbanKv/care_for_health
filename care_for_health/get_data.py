@@ -152,6 +152,7 @@ def get_full_medbase(region=None):
     enc = encoder.categories_[0]
     short_df[enc[0]], short_df[enc[1]], short_df[enc[2]], short_df[enc[3]], short_df[enc[4]], short_df[enc[5]] = profession_encoded.T
     """
+        
     # merge des communes sans médecins et ajout des polygon
     #df_merge = df_comm_pdl.merge(short_df, how="left", left_on="codgeo", right_on="code_insee")#.drop(columns="codgeo")
     df_merge = df_comm.merge(df, how="left", left_on="codgeo", right_on="code_insee")
@@ -177,6 +178,10 @@ def get_full_medbase(region=None):
                                         (df_gps_comm['code_commune_INSEE'].str.startswith(cp_pdl[3])==True)|\
                                         (df_gps_comm['code_commune_INSEE'].str.startswith(cp_pdl[4])==True)) & \
                                         (df_gps_comm['code_commune_INSEE'].apply(len) == 5)].copy().drop_duplicates().reset_index(drop=True)"""
+    
+    # correction des code insee pour qu'ils soient tous sur 5 characters (problème merge sinon)
+    df_gps_comm.loc[df_gps_comm["code_commune_INSEE"].astype(str).str.len() == 4, "code_commune_INSEE"] = df_gps_comm[df_gps_comm["code_commune_INSEE"].astype(str).str.len() == 4]["code_commune_INSEE"].apply(lambda x: "0" + x)
+    
     df_gps_comm = df_gps_comm.drop_duplicates().reset_index(drop=True)
     df_gps_comm.columns = ["code_insee", "Lat_commune", "Lon_commune"]
 
