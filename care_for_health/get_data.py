@@ -264,7 +264,7 @@ def get_data_region():
     
     return df_
 
-def get_full_medbase_with_neighbors(radius=30, region=None, reduce_column_nb=True):
+def get_full_medbase_with_neighbors(radius=30, region=None, reduce_column_nb=True, neighbors_filename='../raw_data/communes_neighbors.csv'):
     """
     region = liste des régions à selectionner
              par défaut séléctionne toutes les régions de France métropole
@@ -283,7 +283,7 @@ def get_full_medbase_with_neighbors(radius=30, region=None, reduce_column_nb=Tru
                    '52':"Pays de la Loire",
                    '93':"Provence-Alpes-Côte d'Azur",}
     """
-    df = get_full_medbase(region=None)
+    df = get_full_medbase(region=region)
     neighbors = get_all_neighbors_by_csv(radius=radius, name=neighbors_filename)
     neighbors[['neighbors_code_insee']]=neighbors[['neighbors_code_insee']].astype('str')
 
@@ -317,26 +317,28 @@ def get_all_neighbors_by_csv(radius=15, name=None):
         
     return df_comms_neighbors
 
+
 def get_all_neighbors(radius=15, name=None):
     df_base = get_full_medbase()
     df_comms_neighbors = pd.DataFrame(columns=["code_insee", "neighbors_code_insee", "distance", "taux_de_couverture"])
-        
+    
     rnc = NearestNeighbors(radius=radius*0.013276477888701137, p=2)
     rnc.fit(df_base[['Lat_commune', 'Lon_commune']])
-        
+    
     for index, row_base in df_base.iterrows():
         closest = rnc.radius_neighbors(X=[[row_base.get('Lat_commune'), row_base.get('Lon_commune')]],radius=radius*0.013276477888701137)
-            
+
         # ignore le premier résultat qui est la commune elle-même
         for i in range(0, len(closest[0][0])):
             row_neighbor = df_base.loc[closest[1][0][i]]
-                
+            
             df_comms_neighbors.loc[len(df_comms_neighbors)] = {"code_insee":row_base.get("code_insee"), 
                                     "neighbors_code_insee": row_neighbor.get("code_insee"),
                                     "distance": closest[0][0][i], 
                                     "taux_de_couverture": row_neighbor.get('taux_de_couverture')}
             
     return df_comms_neighbors
+
 
 def create_dataframe_neighbor(radius=15, name=None):
     if not name:
