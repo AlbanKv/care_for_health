@@ -30,10 +30,13 @@ def list_neighbors_by_df(df, radius=30):
 
 
 def get_meds_neighbors_row(row, df):
-    row.neighbors_Besoin_medecins = df.loc[(df['code_insee'].isin(row['neighbors']))]['Besoin_medecins'].sum()
-    row.neighbors_nb_medecins = df.loc[(df["code_insee"].isin(row["neighbors"]))]["Medecin_generaliste"].sum()
-    row.neighbors_taux_de_couverture = row.neighbors_nb_medecins / row.neighbors_Besoin_medecins
-    row.taux_de_couverture = row['Medecin_generaliste']/row['Besoin_medecins']
+    if isinstance(row.neighbors, list)==True:
+        row.neighbors_Besoin_medecins = df.loc[(df['code_insee'].isin(row['neighbors']))]['Besoin_medecins'].sum()
+        row.neighbors_nb_medecins = df.loc[(df["code_insee"].isin(row["neighbors"]))]["Medecin_generaliste"].sum()
+        row.neighbors_taux_de_couverture = row.neighbors_nb_medecins / row.neighbors_Besoin_medecins
+        row.taux_de_couverture = row['Medecin_generaliste']/row['Besoin_medecins']
+    else:
+        print(f'error on {row.code_insee}')
     #print(row.taux_de_couverture)
     return row
 
@@ -48,27 +51,6 @@ def get_meds_neighbors_df(df):
     return df_
 
 
-def get_meds_neighbors(df):
-    '''
-    Compute insee and medical informations, based on the nearest neighbors.
-    Returns a DataFrame.
-    '''
-    df_return = df.copy()
-    df_merge = pd.DataFrame(columns=["code_insee","taux_de_couverture", "neighbors_Besoin_medecins", "neighbors_nb_medecins", "neighbors_taux_de_couverture"])
-    for row in df_return.iterrows():
-        sum_besoin_meds = df_return.loc[(df_return["code_insee"].isin(row[1]["neighbors"]))]["Besoin_medecins"].sum()
-        sum_meds = df_return.loc[(df_return["code_insee"].isin(row[1]["neighbors"]))]["Medecin_generaliste"].sum()
-        cover_rate_neighbors = sum_meds / sum_besoin_meds
-        df_merge = df_merge.append({"code_insee": row[1]["code_insee"],
-                                   "neighbors_Besoin_medecins": sum_besoin_meds,
-                                   "neighbors_nb_medecins": sum_meds,
-                                   "neighbors_taux_de_couverture": cover_rate_neighbors},
-                                   ignore_index=True)
-    df_2 = df_return.merge(df_merge, on="code_insee")
-    df_2['taux_de_couverture']=0
-    df_2['taux_de_couverture']=df_2['Medecin_generaliste']/df_2['Besoin_medecins']
-    
-    return df_2
 
 ### ---------------- IsInPolygon Calculations: -------------------------
 # Transforms STR polygon to a list of 2-tuples
@@ -171,3 +153,28 @@ def is_inside_polygon(points:list, p:tuple) -> bool:
             break
     # Return true if count is odd, false otherwise
     return (count % 2 == 1)
+
+'''
+Deprecated functions
+
+def get_meds_neighbors(df):
+    Compute insee and medical informations, based on the nearest neighbors.
+    Returns a DataFrame.
+    df_return = df.copy()
+    df_merge = pd.DataFrame(columns=["code_insee","taux_de_couverture", "neighbors_Besoin_medecins", "neighbors_nb_medecins", "neighbors_taux_de_couverture"])
+    for row in df_return.iterrows():
+        sum_besoin_meds = df_return.loc[(df_return["code_insee"].isin(row[1]["neighbors"]))]["Besoin_medecins"].sum()
+        sum_meds = df_return.loc[(df_return["code_insee"].isin(row[1]["neighbors"]))]["Medecin_generaliste"].sum()
+        cover_rate_neighbors = sum_meds / sum_besoin_meds
+        df_merge = df_merge.append({"code_insee": row[1]["code_insee"],
+                                   "neighbors_Besoin_medecins": sum_besoin_meds,
+                                   "neighbors_nb_medecins": sum_meds,
+                                   "neighbors_taux_de_couverture": cover_rate_neighbors},
+                                   ignore_index=True)
+    df_2 = df_return.merge(df_merge, on="code_insee")
+    df_2['taux_de_couverture']=0
+    df_2['taux_de_couverture']=df_2['Medecin_generaliste']/df_2['Besoin_medecins']
+    
+    return df_2
+
+'''

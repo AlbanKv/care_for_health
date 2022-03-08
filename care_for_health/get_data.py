@@ -24,6 +24,8 @@ def clean_data():
 def get_med():
     '''
     Import du fichier medecins_pdl présent dans raw_data
+    /!\ Fichier à généraliser pour toute la France, par exemple avec un paramètre facultatif 'Région'. 
+    Si le paramètre est rempli, seules les données de la Région seraient importées.
     '''
     med_cols={
     "Nature d'exercice": 'str',
@@ -271,13 +273,37 @@ def get_data_region():
 
     return df_
 
-def get_full_medbase_with_neighbors(radius=30, reduce_column_nb=True):
-    '''
-    Builds up the full medbase along with neighbors + cover rate for the neighbors population
-    '''
-    df = get_full_medbase()
-    df = preprocessing.list_neighbors_by_df(df, radius=radius)
+def get_full_medbase_with_neighbors(radius=30, region=None, reduce_column_nb=True, neighbors_filename='../raw_data/communes_neighbors.csv'):
+    """
+    region = liste des régions à selectionner
+             par défaut séléctionne toutes les régions de France métropole
+             
+    region_dict = {'84':"Auvergne-Rhône-Alpes",
+                   '27':"Bourgogne-Franche-Comté",
+                   '53':"Bretagne",
+                   '24':"Centre-Val de Loire",
+                   '94':"Corse",
+                   '44':"Grand Est",
+                   '32':"Hauts-de-France",
+                   '11':"Île-de-France",
+                   '28':"Normandie",
+                   '75':"Nouvelle-Aquitaine",
+                   '76':"Occitanie",
+                   '52':"Pays de la Loire",
+                   '93':"Provence-Alpes-Côte d'Azur",}
+    """
+    df = get_full_medbase(region=region)
+    neighbors = get_all_neighbors_by_csv(radius=radius, name=neighbors_filename)
+    neighbors[['neighbors_code_insee']]=neighbors[['neighbors_code_insee']].astype('str')
+
+    middle_df_neighbors = neighbors.groupby('code_insee', as_index=False).agg({'neighbors_code_insee': lambda x: list(x)})
+    middle_df_neighbors['code_insee']=middle_df_neighbors['code_insee'].astype('str')
+    
+    df = pd.merge(left=df, right=middle_df_neighbors, how='left', left_on='code_insee', right_on='code_insee')
+    df.rename(columns={'neighbors_code_insee':'neighbors'}, inplace=True)
+    
     df = preprocessing.get_meds_neighbors_df(df)
+    
     if reduce_column_nb==True:
         df_ = df[['code_insee', 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018',
             'Besoin_annuel_visites_med_g', 'Besoin_medecins', 'Medecin_generaliste', 'taux_de_couverture',
@@ -286,7 +312,7 @@ def get_full_medbase_with_neighbors(radius=30, reduce_column_nb=True):
         df_ = df.copy()
     return df_
 
-def get_all_neighbors_by_csv(radius=1, name=None):
+def get_all_neighbors_by_csv(radius=15, name=None):
     if not name:
             name = "../raw_data/communes_neighbors.csv"
 
@@ -300,18 +326,19 @@ def get_all_neighbors_by_csv(radius=1, name=None):
 
     return df_comms_neighbors
 
-def get_all_neighbors(radius=1, name=None):
+
+def get_all_neighbors(radius=15, name=None):
     df_base = get_full_medbase()
     df_comms_neighbors = pd.DataFrame(columns=["code_insee", "neighbors_code_insee", "distance", "taux_de_couverture"])
-
-    rnc = NearestNeighbors(radius=radius, p=2)
+    
+    rnc = NearestNeighbors(radius=radius*0.013276477888701137, p=2)
     rnc.fit(df_base[['Lat_commune', 'Lon_commune']])
-
+    
     for index, row_base in df_base.iterrows():
-        closest = rnc.radius_neighbors(X=[[row_base.get('Lat_commune'), row_base.get('Lon_commune')]],radius=radius/80*8)
+        closest = rnc.radius_neighbors(X=[[row_base.get('Lat_commune'), row_base.get('Lon_commune')]],radius=radius*0.013276477888701137)
 
         # ignore le premier résultat qui est la commune elle-même
-        for i in range(1, len(closest[0][0])):
+        for i in range(0, len(closest[0][0])):
             row_neighbor = df_base.loc[closest[1][0][i]]
 
             df_comms_neighbors.loc[len(df_comms_neighbors)] = {"code_insee":row_base.get("code_insee"),
@@ -321,7 +348,8 @@ def get_all_neighbors(radius=1, name=None):
 
     return df_comms_neighbors
 
-def create_dataframe_neighbor(radius=1, name=None):
+
+def create_dataframe_neighbor(radius=15, name=None):
     if not name:
             name = "../raw_data/communes_neighbors.csv"
 
@@ -357,5 +385,17 @@ def read_laposte():
     lp_2 = lp_1.drop((lp_1[lp_1['code_commune_insee'].astype(str).str.startswith('2B')==True]).index).copy()
     return lp_2[['code_postal', 'code_commune_insee', 'nom_de_la_commune']].copy()
 
+def get_full_medbase_with_neighbors(radius=15, reduce_column_nb=True):
+    Builds up the full medbase along with neighbors + cover rate for the neighbors population
+    df = get_full_medbase()
+    df = preprocessing.list_neighbors_by_df(df, radius=radius*0.013276477888701137)
+    df = preprocessing.get_meds_neighbors_df(df)
+    if reduce_column_nb==True:
+        df_ = df[['code_insee', 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018', 
+            'Besoin_annuel_visites_med_g', 'Besoin_medecins', 'Medecin_generaliste', 'taux_de_couverture', 
+            'neighbors', 'neighbors_Besoin_medecins', 'neighbors_nb_medecins', 'neighbors_taux_de_couverture']].copy()
+    else:
+        df_ = df.copy()
+    return df_
 
 '''
