@@ -31,3 +31,7 @@ termcolor
 #add for project
 plotly
 haversine
+fastapi
+uvicorn
+pytz
+joblib

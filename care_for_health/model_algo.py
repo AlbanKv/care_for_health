@@ -15,7 +15,7 @@ import random
 
 
 class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
-    def __init__(self, selection_medecins='tous', sortby='calculated', radius=15, moy_region=0.84, recalcul=True, poids_des_voisins=0.1, nb_voisins_minimum=3, **kwargs):
+    def __init__(self, selection_medecins='tous', sortby='calculated', radius=15, moy_region=0.84, recalcul=False, poids_des_voisins=0.1, nb_voisins_minimum=3, **kwargs):
         self.selection_medecins=selection_medecins
         self.sortby=sortby
         self.radius=radius
