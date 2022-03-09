@@ -38,10 +38,10 @@ def predict(
         selection_medecins=selection_medecins,
         sortby=sortby,
         radius=int(radius),
-        moy_region=moy_region,
+        moy_region=float(moy_region),
         recalcul=recalcul,
-        poids_des_voisins=poids_des_voisins,#coefficient appliqué au calcul du nombre de médecins requis
-        nb_voisins_minimum=nb_voisins_minimum,#élargissement du pool de voisins, si les voisins sont déjà bien dotés et/ou trop peu nombreux
+        poids_des_voisins=float(poids_des_voisins),#coefficient appliqué au calcul du nombre de médecins requis
+        nb_voisins_minimum=int(nb_voisins_minimum),#élargissement du pool de voisins, si les voisins sont déjà bien dotés et/ou trop peu nombreux
         )
     
     df = pd.read_csv('brouillon/df_api_test.csv', delimiter=',', dtype={'code_insee':'str'}, converters={"neighbors": lambda x: ast.literal_eval(x)}).reindex()

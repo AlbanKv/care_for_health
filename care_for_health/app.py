@@ -1,73 +1,96 @@
+import json
 import streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
+from plotly import graph_objects as go
+import json
+
+st.set_page_config(
+     page_title="General practitioners repartition",
+     page_icon="🐍",
+     layout="wide",
+     initial_sidebar_state="expanded",
+    )
 
 st.markdown('''
-# General physicists repartition
-## 
+# General Practitioners repartition
+### How could we improve daily access to a general practitioner in France, based only on a different repartition? 
 ''')
-
-columns = st.columns(4)
-
-pickup_longitude = columns[0].text_input('Pickup longitude', value='40.7614327')
-pickup_latitude = columns[1].text_input('Pickup latitude', value='-73.9798156')
-dropoff_longitude = columns[2].text_input('Dropoff longitude', value='40.6513111')
-dropoff_latitude = columns[3].text_input('Dropoff latitude', value='-73.8803331')
 
 st.markdown('''
-### Please enter your travel details:
+### Set parameters:
 ''')
+
+columns = st.columns(3)
+
+radius = columns[0].text_input('Select radius', value='15')
+moy_region = columns[1].text_input('Set a breakeven ratio', value='0.84')
+poids_des_voisins = columns[2].text_input('Neighbors_weight', value='0.1')
 
 columns2 = st.columns(3)
-pickup_date = columns2[0].date_input('Date')#, value='2012-10-06 2012:10:20')
-pickup_time = columns2[1].time_input('Time')#, value='2012-10-06 2012:10:20')
-passenger_count = columns2[2].selectbox('N. of passengers', range(1,11))
-location_df = pd.DataFrame([[float(pickup_longitude), float(pickup_latitude)]], columns=['lat', 'lon'])
 
-url = 'https://fr-nantes-acy-img1-gfiqg24vta-ew.a.run.app/predict'
+med_pickup = columns2[0].selectbox(
+     'How would you pick general practitioners?',
+     ('As many as possible', 'Only where they are too numerous'))
+how_to_sort = columns2[1].selectbox(
+     'Which type of spread do you want to choose?',
+     ('Distance_based', 'Calcul_based'))
+nb_voisins_minimum = columns2[2].selectbox('Minimum number of neighbors', range(1,11))
 
-pickup_datetime = f'{pickup_date} {pickup_time}'
-params = dict(
-  pickup_datetime=pickup_datetime,#'2012-10-06 12:10:20',
-  pickup_longitude=pickup_longitude,
-  pickup_latitude=pickup_latitude,
-  dropoff_longitude=dropoff_longitude,
-  dropoff_latitude=dropoff_latitude,    
-  passenger_count=passenger_count
-)
+if med_pickup=='As many as possible':
+    med_pickup='tous'
+else:
+    med_pickup='excédent'
 
-if st.button('Calculate my fare'):
+if how_to_sort=='Distance_based':
+    sortby='distance'
+else:
+    sortby='calculated'
+
+url = 'http://127.0.0.1:8000/predict'
+
+params=dict(
+    selection_medecins=str(med_pickup),
+    sortby=sortby,
+    radius=radius,
+    recalcul=False,
+    )
+
+'''
+    moy_region=moy_region,
+    poids_des_voisins=poids_des_voisins,
+    nb_voisins_minimum=nb_voisins_minimum,
+'''
+df_default = pd.read_csv('brouillon/df_api_test.csv', delimiter=',', dtype={'code_insee':'str'}, usecols=['code_insee', 'neighbors_taux_de_couverture']).reindex()# converters={"neighbors": lambda x: ast.literal_eval(x)}).reindex()
+df_combine = df_default
+st.markdown('''
+
+
+''')
+dicty={}
+
+if st.button('Make the magic happen'):
     # print is visible in the server output, not in the page
-    print('button clicked!')
+    print('You made it!')
     req = requests.get(url, params=params)
+    dicty = json.loads(req.json()['data'])
     st.markdown(f'''
-        ## {req.json()['fare']:.2f}
+        ## {req.json()['Nouveau_taux']:.2f}
         ''')
+    columns_res = st.columns(2)
+    columns_res[0].write(f"Initial rate :{req.json()['Ancien_taux']:.2f}")
+    columns_res[1].write('test2')#f'Rate progression: {100*(req.json()['Evolution du taux']):.2f}')
+
+    df_from_dicty = pd.DataFrame(dicty).reset_index().rename(columns={'index': 'code_insee'})
+    df_combine=df_default.drop(columns='neighbors_taux_de_couverture').merge(df_from_dicty, how='left', left_on='code_insee', right_on='code_insee')
+
 else:
     st.write('Click me!')
 
+#st.dataframe(data=pd.DataFrame(dicty))
 
 # @st.cache
-def plot_map():
-    return px.line_mapbox(my_trip, lat='lat', lon='lon', zoom=3, height=400)
-    
-px.scatter_mapbox(my_trip, lat='lat', lon='lon')
-
-fig = plot_map()
-
-fig.update_layout(mapbox_style="stamen-terrain", mapbox_zoom=10, mapbox_center_lat = mid_lat, mapbox_center_lon = mid_lon,
-    margin={"r":0,"t":0,"l":0,"b":0})
-
-st.plotly_chart(fig, use_container_width=True)
-
-
-
-fig.update_layout()
-
-#fig = chloropleth_map_communes(df_communes, code_insee_str, taux_couv_str)
-
-## MAP PAR COMMUNES (SELECTION DES REGIONS A FAIRE DANS LE DATAFRAME)
 def chloropleth_map_communes(df_communes,code_insee_str,taux_couv_str):
     """
     arguments :
@@ -75,7 +98,7 @@ def chloropleth_map_communes(df_communes,code_insee_str,taux_couv_str):
         taux_couv_str: mettre le nom de la colonne ou le taux de couverture est présent ('taux_de_couverture')
     """
     #json_load
-    json_data = 'communes_fr.json'
+    json_data = 'raw_data/communes_fr.json'
     json_load = json.load(open(json_data))
 
     #map
@@ -98,6 +121,53 @@ def chloropleth_map_communes(df_communes,code_insee_str,taux_couv_str):
 
     return fig
 
+#fig.update_layout(mapbox_style="stamen-terrain", mapbox_zoom=10, mapbox_center_lat = mid_lat, mapbox_center_lon = mid_lon,
+#    margin={"r":0,"t":0,"l":0,"b":0})
+
+@st.cache
+def display_chloro_cache2():
+    fig = chloropleth_map_communes(df_combine,'code_insee', 'neighbors_taux_de_couverture')
+    return fig
+
+fig = display_chloro_cache2()
+st.plotly_chart(fig, use_container_width=True)
+
+#st.plotly_chart(fig, use_container_width=True)
+
+fig.update_traces(
+        z = df_combine['neighbors_taux_de_couverture'], #Assign information data : taux de couverture
+        zmin=0, zmax=1.5,
+        colorscale = [[0, 'rgb(0,0,255)'], [0.6, 'rgb(0,255,0)'], [1, 'rgb(255,0,0)']],
+)
+#fig.update_layout()
+#return chloropleth_map_communes(df_combine,'code_insee', 'neighbors_taux_de_couverture')
+
+
+#st.plotly_chart(fig, use_container_width=True)
+
+
+
+
+#fig = chloropleth_map_communes(df_communes, code_insee_str, taux_couv_str)
+
+## MAP PAR COMMUNES (SELECTION DES REGIONS A FAIRE DANS LE DATAFRAME)
 
 
 # st.write(req.get('fare'))
+'''
+# @st.cache
+def plot_map():
+    return px.line_mapbox(my_trip, lat='lat', lon='lon', zoom=3, height=400)
+    
+px.scatter_mapbox(my_trip, lat='lat', lon='lon')
+
+fig = plot_map()
+
+fig.update_layout(mapbox_style="stamen-terrain", mapbox_zoom=10, mapbox_center_lat = mid_lat, mapbox_center_lon = mid_lon,
+    margin={"r":0,"t":0,"l":0,"b":0})
+
+st.plotly_chart(fig, use_container_width=True)
+
+fig.update_layout()
+
+'''

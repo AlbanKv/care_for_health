@@ -53,3 +53,13 @@ pypi_test:
 
 pypi:
 	@twine upload dist/* -u $(PYPI_USERNAME)
+
+# ----------------------------------
+#             PROJECT
+# ----------------------------------
+
+uvicorn_local_run:
+	@uvicorn api.fast_care_for_health:app --reload
+
+streamlit_local_run:
+	@streamlit run care_for_health/app.py
