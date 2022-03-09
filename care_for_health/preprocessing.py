@@ -31,17 +31,12 @@ def list_neighbors_by_df(df, radius=30):
 
 def get_meds_neighbors_row(row, df):
     try:
-    #if isinstance(row.neighbors, list)==True:
         row.neighbors_Besoin_medecins = df.loc[(df['code_insee'].isin(row['neighbors']))]['Besoin_medecins'].sum()
         row.neighbors_nb_medecins = df.loc[(df["code_insee"].isin(row["neighbors"]))]["Medecin_generaliste"].sum()
         row.neighbors_taux_de_couverture = row.neighbors_nb_medecins / row.neighbors_Besoin_medecins
         row.taux_de_couverture = row['Medecin_generaliste']/row['Besoin_medecins']
-    #else:
     except Exception as e:
-    # ... PRINT THE ERROR MESSAGE ... #
         print(e)
-        #print(f'error on {row.code_insee}')
-    #print(row.taux_de_couverture)
     return row
 
 
