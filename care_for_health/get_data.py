@@ -312,7 +312,7 @@ def get_full_medbase_with_neighbors(radius=30, region=None, reduce_column_nb=Tru
     df = preprocessing.get_meds_neighbors_df(df)
 
     if reduce_column_nb==True:
-        df_ = df[['code_insee', 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018',
+        df_ = df[['code_insee', "code_regions", 'geometry', 'Lat_commune', 'Lon_commune', 'Population_2018',
             'Besoin_annuel_visites_med_g', 'Besoin_medecins', 'Medecin_generaliste', 'taux_de_couverture',
             'neighbors', 'neighbors_Besoin_medecins', 'neighbors_nb_medecins', 'neighbors_taux_de_couverture']].copy()
     else:
