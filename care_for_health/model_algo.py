@@ -15,7 +15,7 @@ import random
 
 
 class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
-    def __init__(self, selection_medecins='tous', sortby='calculated', radius=15, moy_region=0.84, recalcul=True, poids_des_voisins=0.1, nb_voisins_minimum=3, **kwargs):
+    def __init__(self, selection_medecins='tous', sortby='calculated', radius=15, moy_region=0.84, recalcul=False, poids_des_voisins=0.1, nb_voisins_minimum=3, **kwargs):
         self.selection_medecins=selection_medecins
         self.sortby=sortby
         self.radius=radius
@@ -131,7 +131,7 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
             self.recap['distance_max']= np.array(self.distance).max()
         self.recap['médecins_déplacés']= len(self.distance)
 
-        return self.df_[['code_insee', 'Medecin_generaliste']]#, 'neighbors_taux_de_couverture']]#, recap
+        return self.df_[['code_insee', 'neighbors_taux_de_couverture']]#, 'neighbors_taux_de_couverture']]#, recap
 
     def get_params(self, deep=True):
         # suppose this estimator has parameters "alpha" and "recursive"
