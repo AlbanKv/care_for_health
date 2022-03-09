@@ -131,7 +131,7 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
             self.recap['distance_max']= np.array(self.distance).max()
         self.recap['médecins_déplacés']= len(self.distance)
 
-        return self.df_[['code_insee', 'Medecin_generaliste']]#, 'neighbors_taux_de_couverture']]#, recap
+        return self.df_[['code_insee', 'neighbors_taux_de_couverture']]#, 'neighbors_taux_de_couverture']]#, recap
 
     def get_params(self, deep=True):
         # suppose this estimator has parameters "alpha" and "recursive"
