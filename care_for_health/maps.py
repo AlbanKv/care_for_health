@@ -10,7 +10,7 @@ def chloropleth_map_regions(df_regions,code_regions_str,taux_couv_str):
         taux_couv_str: mettre le nom de la colonne ou le taux de couverture est présent ('taux_de_couverture')
     """
     #json_load
-    json_data = 'regions_fr.geojson'
+    json_data = '../raw_data/regions_fr.geojson'
     json_load = json.load(open(json_data))
 
     #map
