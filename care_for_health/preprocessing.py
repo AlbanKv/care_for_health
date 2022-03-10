@@ -2,7 +2,7 @@ from haversine import haversine, Unit
 import pandas as pd
 
 ### ---------------- Neighbors calculations: ---------------------------
-# Calculate closest neighbors with calculate_cluster_row, 
+# Calculate closest neighbors with calculate_cluster_row,
 # Perform the operation on the entire dataset with calculate_cluster_df,
 # Apply computations (med requirements + available) on each code_insee
 
@@ -36,7 +36,7 @@ def get_meds_neighbors_row(row, df):
         row.neighbors_taux_de_couverture = row.neighbors_nb_medecins / row.neighbors_Besoin_medecins
         row.taux_de_couverture = row['Medecin_generaliste']/row['Besoin_medecins']
     except Exception as e:
-        print(e)
+        pass #print(e)
     return row
 
 
@@ -62,20 +62,20 @@ def polygon_to_list(str_polygon):
     for coord in poly_liste:
         new_list.append(tuple(map(float, coord.split(' '))))
     return new_list
- 
+
 # Given three collinear points p, q, r, the function checks if point q lies on line segment 'pr'
 def onSegment(p:tuple, q:tuple, r:tuple) -> bool:
-     
+
     if ((q[0] <= max(p[0], r[0])) &
         (q[0] >= min(p[0], r[0])) &
         (q[1] <= max(p[1], r[1])) &
         (q[1] >= min(p[1], r[1]))):
         return True
-         
+
     return False
- 
-# To find orientation of ordered triplet (p, q, r). 
-#  The function returns following values 
+
+# To find orientation of ordered triplet (p, q, r).
+#  The function returns following values
 # 0 --> p, q and r are collinear
 # 1 --> Clockwise
 # 2 --> Counterclockwise
@@ -92,7 +92,7 @@ def orientation(p:tuple, q:tuple, r:tuple) -> int:
         return 2 # Clock or counterclock
 
 def doIntersect(p1, q1, p2, q2):
-    # Find the four orientations needed for 
+    # Find the four orientations needed for
     # general and special cases
     o1 = orientation(p1, q1, p2)
     o2 = orientation(p1, q1, q2)
@@ -133,14 +133,14 @@ def is_inside_polygon(points:list, p:tuple) -> bool:
     count = i = 0
     while True:
         next = (i + 1) % n
-        # Check if the line segment from 'p' to 
-        # 'extreme' intersects with the line 
+        # Check if the line segment from 'p' to
+        # 'extreme' intersects with the line
         # segment from 'polygon[i]' to 'polygon[next]'
         if (doIntersect(points[i],
                         points[next],
                         p, extreme)):
-            # If the point 'p' is collinear with line 
-            # segment 'i-next', then check if it lies 
+            # If the point 'p' is collinear with line
+            # segment 'i-next', then check if it lies
             # on segment. If it lies, return true, otherwise false
             if orientation(points[i], p,
                            points[next]) == 0:
@@ -173,7 +173,7 @@ def get_meds_neighbors(df):
     df_2 = df_return.merge(df_merge, on="code_insee")
     df_2['taux_de_couverture']=0
     df_2['taux_de_couverture']=df_2['Medecin_generaliste']/df_2['Besoin_medecins']
-    
+
     return df_2
 
 '''
