@@ -25,17 +25,21 @@ def predict(
     selection_medecins='tous',
     sortby='calculated',
     radius=15,
-    moy_region=0.84,
+    moy_region=None,
     recalcul=False,
     poids_des_voisins=0.1,
     nb_voisins_minimum=2,
+    region = None
     ):
+    
+    if not moy_region:
+        moy_region = float(moy_region)
 
     params=dict(
         selection_medecins=selection_medecins,
         sortby=sortby,
         radius=int(radius),
-        moy_region=float(moy_region),
+        moy_region=moy_region,
         recalcul=recalcul,
         poids_des_voisins=float(poids_des_voisins),#coefficient appliqué au calcul du nombre de médecins requis
         nb_voisins_minimum=int(nb_voisins_minimum),#élargissement du pool de voisins, si les voisins sont déjà bien dotés et/ou trop peu nombreux
@@ -43,6 +47,9 @@ def predict(
     
     df = pd.read_csv('data/df_api_test.csv', delimiter=',', dtype={'code_insee':'str'}, converters={"neighbors": lambda x: ast.literal_eval(x)}).reindex()
 
+    if region:
+        df = df[df["code_regions"].isin(region)].copy()
+    
     model = model_algo.Medical_ReDispatch()
     model.set_params(**params)
     model.fit(df)
