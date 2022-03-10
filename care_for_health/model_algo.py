@@ -15,7 +15,7 @@ import random
 
 
 class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
-    def __init__(self, selection_medecins='tous', sortby='calculated', radius=15, moy_region=0.84, recalcul=False, poids_des_voisins=0.1, nb_voisins_minimum=3, **kwargs):
+    def __init__(self, selection_medecins='tous', sortby='calculated', radius=15, moy_region=None, recalcul=False, poids_des_voisins=0.1, nb_voisins_minimum=3, **kwargs):
         self.selection_medecins=selection_medecins
         self.sortby=sortby
         self.radius=radius
@@ -51,6 +51,16 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
         self.output = []
         #trades = []
         #neighbors_stats = []
+        
+        if self.moy_region:
+            df_["moy_region"] = self.moy_region
+        else:
+            df_moy_reg = df_.groupby("code_regions", as_index=False).agg(sum_besoin=("Besoin_medecins", "sum"), sum_meds=("Medecin_generaliste", "sum"))
+            df_moy_reg["moy_region"] = round(df_moy_reg["sum_meds"] / df_moy_reg["sum_besoin"], 2)
+
+            df_moy_reg.drop(columns=["sum_besoin", "sum_meds"], inplace=True)
+
+            df_ = df_.merge(df_moy_reg, how="left", on="code_regions")
 
         # Début de l'itération
         for ind, row in pool_communes.iterrows():
@@ -59,11 +69,11 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
             med_dispo = nb_medecins_disponibles(self.df_.loc[ind,:], selection_medecins=self.selection_medecins)
 
             # Identification des communes ayant une meilleure couverture que la moyenne de la région:
-            if self.df_.loc[ind,'neighbors_taux_de_couverture'] > self.moy_region and med_dispo >= 1 :
+            if self.df_.loc[ind,'neighbors_taux_de_couverture'] > df_.moy_region and med_dispo >= 1 :
                 
                 # Sélection des voisins, cleaning avec seulement les déficitaires:
                 # Idée pour la suite: ne pourrait-on pas tester chaque type de 'sortby' et conserver le meilleur résultat ?
-                temp_moy_region=self.moy_region # Valeur minimale, pouvant être repoussée si aucun voisin déficitaire n'est identifié
+                temp_moy_region=df_.moy_region # Valeur minimale, pouvant être repoussée si aucun voisin déficitaire n'est identifié
                 temp_radius=self.radius
 
                 neighbors_df = sort_neighbors(ind, self.rnc, self.df_, sortby=self.sortby, moy_region=temp_moy_region, radius=temp_radius, poids_des_voisins=self.poids_des_voisins)
@@ -112,7 +122,7 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
         # Production du dictionnaire récapitulatif & chiffres clés
         self.df_ = preprocessing.get_meds_neighbors_df(self.df_)
         self.output = self.df_.neighbors_taux_de_couverture.mean()
-        self.output_communes = len(self.df_[self.df_['neighbors_taux_de_couverture']<self.moy_region])
+        self.output_communes = len(self.df_[self.df_['neighbors_taux_de_couverture']<df_.moy_region])
 
         #recap['trades'] = trades
         self.distances = self.distance
