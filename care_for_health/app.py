@@ -15,12 +15,7 @@ st.set_page_config(
 
 st.markdown('''
 # General Practitioners repartition
-### How could we improve daily access to a general practitioner in France, based only on a different repartition? 
-''')
-
-st.markdown('''
-### Set parameters:
-''')
+#### Improving daily access to general practitioners in France, based on a different repartition.''')
 
 columns = st.columns(3)
 
