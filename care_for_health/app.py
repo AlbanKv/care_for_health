@@ -76,8 +76,8 @@ elif how_to_sort=='Combination of all of it':
     sortby='calculated'
 
 
-url = 'http://localhost:8000/predict'
-#url = 'https://careforhealth-gfiqg24vta-ew.a.run.app/predict'
+#url = 'http://localhost:8000/predict'
+url = 'https://careforhealth-gfiqg24vta-ew.a.run.app/predict'
 
 apps = {
     "heatmap": {'title': "Heatmap", "icon": "map"}
@@ -124,14 +124,11 @@ if col_buttons[0].button('Make the magic happen'):
     req = requests.get(url, params=params)
     
     dicty = json.loads(req.json()['Data'])
+    col_buttons[2].markdown(f'''### Evolution du taux: ''')
     if req.json()['Evolution du taux'] > 0:
-        col_buttons[2].markdown(f'''
-            ## Evolution du taux: +{req.json()['Evolution du taux']*100:.2f} %
-            ''')
+        col_buttons[3].markdown(f'''### +{req.json()['Evolution du taux']*100:.2f} %''')
     else:
-        col_buttons[2].markdown(f'''
-            ## Evolution du taux: {req.json()['Evolution du taux']*100:.2f} %
-            ''')
+        col_buttons[3].markdown(f'''## Evolution du taux: {req.json()['Evolution du taux']*100:.2f} %''')
     all_results=pd.DataFrame(
         columns=['Initial rate', 'Calculated rate', 'Average moved distance', 'Total distance', 'Number of relocated GPs'], 
         data=[[f"{req.json()['Ancien_taux_moyenne_communes']*100:.2f}%",
