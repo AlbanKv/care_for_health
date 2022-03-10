@@ -1,3 +1,4 @@
+from pkgutil import get_data
 from haversine import haversine, Unit 
 from sklearn.neighbors import NearestNeighbors
 from sklearn.base import BaseEstimator, ClassifierMixin
@@ -5,7 +6,7 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels
 from sklearn.metrics import euclidean_distances
 
-from care_for_health import preprocessing
+from care_for_health import preprocessing, get_data
 import numpy as np
 import pandas as pd
 import random
@@ -15,7 +16,7 @@ import random
 # Recalcule le taux de couverture
 # Devra, à terme, mémoriser les modifications apportées
 
-def algorithm_V2(df, selection_medecins='tous', sortby='calculated', radius=15, moy_region=0.84, recalcul=True, poids_des_voisins=0.1, nb_voisins_minimum=3):
+def algorithm_V2(df, selection_medecins='tous', sortby='calculated', radius=15, moy_region=None, recalcul=False, poids_des_voisins=0.1, nb_voisins_minimum=3):
     '''
     Pour un dataframe donné (df), redispatch les médecins en fonction de plusieurs paramètres : 
         * selection_medecins: 'tous', 'excédent'. 
@@ -38,6 +39,17 @@ def algorithm_V2(df, selection_medecins='tous', sortby='calculated', radius=15, 
             A l'issue de chaque traitement d'une commune, un recalcul des taux_de_couverture est réalisé si = True
     '''
     df_ = df.copy()
+    
+    #Calcul moyenne région si non indiqué
+    if moy_region:
+        df_["moy_region"] = moy_region
+    else:
+        df_moy_reg = df_.groupby("code_regions", as_index=False).agg(sum_besoin=("Besoin_medecins", "sum"), sum_meds=("Medecin_generaliste", "sum"))
+        df_moy_reg["moy_region"] = round(df_moy_reg["sum_meds"] / df_moy_reg["sum_besoin"], 2)
+
+        df_moy_reg.drop(columns=["sum_besoin", "sum_meds"], inplace=True)
+
+        df_ = df_.merge(df_moy_reg, how="left", on="code_regions")
 
     #Initialisation des plus proches voisins : 
     rnc = NearestNeighbors(radius=radius*0.013276477888701137, p=2)
@@ -45,12 +57,12 @@ def algorithm_V2(df, selection_medecins='tous', sortby='calculated', radius=15, 
     itr=0
 
     # Itération sur les codes INSEE : 
-    pool_communes = df_[(df_.neighbors_taux_de_couverture > moy_region)&(df_.Medecin_generaliste >= 1)].sort_values(by='neighbors_taux_de_couverture', ascending=False)
+    pool_communes = df_[(df_.neighbors_taux_de_couverture > df_.moy_region)&(df_.Medecin_generaliste >= 1)].sort_values(by='neighbors_taux_de_couverture', ascending=False)
     itr_max = len(pool_communes)
 
     # Baseline avant lancement de l'itération :
     baseline = df_.neighbors_taux_de_couverture.mean()
-    baseline_communes = len(df[df['neighbors_taux_de_couverture']<moy_region])
+    baseline_communes = len(df[df['neighbors_taux_de_couverture']< df_.moy_region])
 
     # Listing des modifications :
     distance = []
@@ -66,11 +78,11 @@ def algorithm_V2(df, selection_medecins='tous', sortby='calculated', radius=15, 
         med_dispo = nb_medecins_disponibles(df.loc[ind,:], selection_medecins=selection_medecins)
 
         # Identification des communes ayant une meilleure couverture que la moyenne de la région:
-        if df_.loc[ind,'neighbors_taux_de_couverture'] > moy_region and med_dispo >= 1 :
+        if df_.loc[ind,'neighbors_taux_de_couverture'] > df_.loc[ind,'moy_region'] and med_dispo >= 1 :
             
             # Sélection des voisins, cleaning avec seulement les déficitaires:
             # Idée pour la suite: ne pourrait-on pas tester chaque type de 'sortby' et conserver le meilleur résultat ?
-            temp_moy_region=moy_region # Valeur minimale, pouvant être repoussée si aucun voisin déficitaire n'est identifié
+            temp_moy_region=df_.loc[ind,'moy_region'] # Valeur minimale, pouvant être repoussée si aucun voisin déficitaire n'est identifié
             temp_radius=radius
 
             neighbors_df = sort_neighbors(ind, rnc, df_, sortby=sortby, moy_region=temp_moy_region, radius=temp_radius, poids_des_voisins=poids_des_voisins)
@@ -122,7 +134,7 @@ def algorithm_V2(df, selection_medecins='tous', sortby='calculated', radius=15, 
     # Production du dictionnaire récapitulatif & chiffres clés
     df_ = preprocessing.get_meds_neighbors_df(df_)
     output = df_.neighbors_taux_de_couverture.mean()
-    output_communes = len(df_[df_['neighbors_taux_de_couverture']<moy_region])
+    output_communes = len(df_[df_['neighbors_taux_de_couverture']< df_.moy_region])
 
     #recap['trades'] = trades
     recap['distances'] = distance
