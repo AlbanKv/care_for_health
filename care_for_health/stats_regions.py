@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from care_for_health import get_data
 import seaborn as sns
@@ -64,7 +65,7 @@ def bar_plot_regions_fr():
     bars = plt.barh(regions, taux_couv, color=colors)
 
     plt.xlim(0.6, 1.01)
-    plt.title("Taux de couverture medecins de la France et par région")
+    plt.title("Coverage rate of general practitioners in France and by region")
 
     for bar in bars:
             width = bar.get_width()
@@ -127,8 +128,8 @@ def stat_2():
 
 
     fig, ax = plt.subplots(figsize=(15, 7.3))
-    rect1 = ax.bar(r1, med_pour_100000_hab, width = barWidth, label='Nb_medecins_actuels', color = ['lightgreen' for i in med_pour_100000_hab], linewidth = 2)
-    rect2 = ax.bar(r2, besoin_pour_100000_hab, width = barWidth, label='Besoin_en_medecins', color = ['forestgreen' for i in besoin_pour_100000_hab], linewidth = 4)
+    rect1 = ax.bar(r1, med_pour_100000_hab, width = barWidth, label='Actual_nb_GP', color = ['lightgreen' for i in med_pour_100000_hab], linewidth = 2)
+    rect2 = ax.bar(r2, besoin_pour_100000_hab, width = barWidth, label='Need_nb_GP', color = ['forestgreen' for i in besoin_pour_100000_hab], linewidth = 4)
 
     for bar in ax.patches:
         value = bar.get_height()
@@ -138,14 +139,14 @@ def stat_2():
         ax.text(text_x, text_y, text, ha='center',color='black',size=12)
 
     # Add some text for labels,x-axis tick labels
-    ax.set_ylabel('pour 100 000 habitants')
-    ax.set_xlabel('Régions')
+    ax.set_ylabel('per 100 000 persons')
+    ax.set_xlabel('regions')
     ax.set_ylim(55, 100)
     ax.set_xticks(r1)
     ax.set_xticklabels(labels,rotation=90)
     ax.legend(loc='best')
 
-    plt.title("Nombre de Medecins actuels et besoin en medecins pour 100 000 habitants : France et région \n(trié par la différence entre besoin et actuel)")
+    plt.title("Number of current GP and need for GP per 100 000 persons: France and region \n(sorted by the difference between need and actual)")
 
     return plt
 
@@ -247,10 +248,60 @@ def stat_3(data_com_neig):
 
     return plt
 
+############ STAT 3.2 ##############
 
-############ STAT 4 ##############
+def stat_3_good():
+    category_names = ['% surplus municipalities',"% municipalities +/- 10% of region's coverage rate", '% deficit municipalities']
 
-def coverage_rate_range(df,col_cov_rate_str):
+    results = {
+        'Île-de-France': [2, 100-2-56, 56],
+        'Pays de la Loire': [14, 100-14-36, 36],
+        'Occitanie': [14, 100-14-39, 39],
+        'Hauts-de-France': [14, 100-14-41, 41],
+        'Nouvelle-Aquitaine': [15, 100-15-38, 38],
+        'Centre-Val de Loire': [17, 100-17-45, 45],
+        'France': [17, 100-17-47, 47],
+        'Normandie': [17, 100-17-49, 49],
+        'Bretagne': [17, 100-17-55, 55],
+        'Auvergne-Rhône-Alpes': [19, 100-19-52, 52],
+        'Grand Est': [20, 100-20-51, 51],
+        "Provence-Alpes-Côte d'Azur": [21, 100-21-51, 51],
+        'Corse': [22, 100-22-65, 65],
+        'Bourgogne-Franche-Comté': [28, 100-28-57, 57]
+    }
+    labels = list(results.keys())
+    data = np.array(list(results.values()))
+    data_cum = data.cumsum(axis=1)
+    category_colors = plt.get_cmap('rainbow')(
+        np.linspace(0.15, 0.85, data.shape[1]))
+
+    fig, ax = plt.subplots(figsize=(12, 7))
+    ax.invert_yaxis()
+    ax.xaxis.set_visible(False)
+    ax.set_xlim(0, np.sum(data, axis=1).max())
+
+    for i, (colname, color) in enumerate(zip(category_names, category_colors)):
+        widths = data[:, i]
+        starts = data_cum[:, i] - widths
+        ax.barh(labels, widths, left=starts, height=0.5,
+                label=colname, color=color)
+        xcenters = starts + widths / 2
+
+        r, g, b, _ = color
+        text_color = 'white' if r * g * b < 0.1 else 'black'
+        for y, (x, c) in enumerate(zip(xcenters, widths)):
+            ax.text(x, y, str(int(c)), ha='center', va='center',
+                    color=text_color)
+    ax.legend(ncol=len(category_names), bbox_to_anchor=(0, 1),
+              loc='lower left', fontsize='small')
+
+    return fig, ax
+
+############ STAT 4.1 ##############
+
+def coverage_rate_range(df,col_cov_rate_str,title_x):
     fig_2, ax_2 = plt.subplots(figsize=(15,7))
+    #"neighbors coverage rate"
+    ax_2.set_xlabel(title_x)
     sns.histplot(df[col_cov_rate_str], bins=[0,0.2,0.4,0.6, 0.8, 1.0 ,1.2,1.4, 1.6, 1.8, 2.0], stat="percent");
     return fig_2
