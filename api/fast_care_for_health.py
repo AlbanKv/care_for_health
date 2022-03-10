@@ -2,9 +2,6 @@ from pyexpat import model
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-from datetime import datetime
-import pytz
-import joblib
 from care_for_health import model_algo
 import ast
 import json
@@ -44,7 +41,7 @@ def predict(
         nb_voisins_minimum=int(nb_voisins_minimum),#élargissement du pool de voisins, si les voisins sont déjà bien dotés et/ou trop peu nombreux
         )
     
-    df = pd.read_csv('brouillon/df_api_test.csv', delimiter=',', dtype={'code_insee':'str'}, converters={"neighbors": lambda x: ast.literal_eval(x)}).reindex()
+    df = pd.read_csv('data/df_api_test.csv', delimiter=',', dtype={'code_insee':'str'}, converters={"neighbors": lambda x: ast.literal_eval(x)}).reindex()
 
     model = model_algo.Medical_ReDispatch()
     model.set_params(**params)

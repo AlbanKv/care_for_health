@@ -63,3 +63,6 @@ uvicorn_local_run:
 
 streamlit_local_run:
 	@streamlit run care_for_health/app.py
+
+docker_run:
+	@docker run -e PORT=8000 -p 8080:8000 careforhealth
