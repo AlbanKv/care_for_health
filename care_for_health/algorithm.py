@@ -174,7 +174,7 @@ def sort_neighbors(ind, rnc, df_, sortby='distance', moy_region=0.84, radius=15,
         * Distance, en °
         * Le taux de couverture (avec voisinage)
         * Le déficit en médecins (avec voisinage) (valeur positive = manque de médecin, valeur négative = surplus de médecin)
-    sortby peut prendre les valeurs suivantes : 'distance', 'deficit_rate', 'deficit_absolute', 'random', 'calculated'
+    sortby peut prendre les valeurs suivantes : 'distance', 'deficit_rate', 'deficit_absolute', 'random', 'calculated', 'computed_need'
     '''
     closest = rnc.radius_neighbors(X=[[df_.loc[ind,'Lat_commune'],df_.loc[ind,'Lon_commune']]],radius=radius*0.013276477888701137)
     neighbors_list = list(closest[1][0])
@@ -186,9 +186,10 @@ def sort_neighbors(ind, rnc, df_, sortby='distance', moy_region=0.84, radius=15,
     neighbors_code_insee=np.array(df_.loc[(df_.index.isin(neighbors_list))]['code_insee'])
     neighbors_deficit_local=np.array(df_.loc[(df_.index.isin(neighbors_list))]['Medecin_generaliste'])-np.array(df_.loc[(df_.index.isin(neighbors_list))]['Besoin_medecins'])
     neighbors_deficit_neighbors=np.array(df_.loc[(df_.index.isin(neighbors_list))]['neighbors_nb_medecins'])-np.array(df_.loc[(df_.index.isin(neighbors_list))]['neighbors_Besoin_medecins'])
-    neighbors_intermediate_list=list(zip(neighbors_dist, neighbors_rate, neighbors_deficit_neighbors.astype('int'), neighbors_deficit_local.astype('int'), neighbors_code_insee))
+    neighbors_computed_need=np.array(df_.loc[(df_.index.isin(neighbors_list))]['neighbors_Besoin_medecins'])
+    neighbors_intermediate_list=list(zip(neighbors_dist, neighbors_rate, neighbors_deficit_neighbors.astype('int'), neighbors_deficit_local.astype('int'), neighbors_computed_need, neighbors_code_insee))
     neighbors_dict=dict(zip(neighbors_list, neighbors_intermediate_list))
-    neighbors_df=pd.DataFrame(data=neighbors_dict, index=['distance', 'neighbors_taux_de_couverture', 'neighbors_deficit_nb_medecins', 'local_deficit_nb_medecins', 'code_insee']).T
+    neighbors_df=pd.DataFrame(data=neighbors_dict, index=['distance', 'neighbors_taux_de_couverture', 'neighbors_deficit_nb_medecins', 'local_deficit_nb_medecins', 'neighbors_computed_need', 'code_insee']).T
     if sortby=='distance':
         neighbors_df.sort_values(by='distance', inplace=True)
         # neighbors_dict={k: v for k, v in sorted(neighbors_dict.items(), key=lambda item: item[1][0])}
@@ -203,6 +204,8 @@ def sort_neighbors(ind, rnc, df_, sortby='distance', moy_region=0.84, radius=15,
     elif sortby=='calculated':
         neighbors_df.loc[:,'calculation']=neighbors_df.loc[:,'distance']*neighbors_df.loc[:,'neighbors_taux_de_couverture']+neighbors_df.loc[:,'local_deficit_nb_medecins']*0.1+neighbors_df.loc[:,'neighbors_deficit_nb_medecins']*0.03
         neighbors_df.sort_values(by='calculation', inplace=True)
+    elif sortby=='computed_need':
+        neighbors_df.sort_values(by=['neighbors_computed_need'], inplace=True)
     neighbors_df.loc[:,'medecins_assignables']=neighbors_df.loc[:,'local_deficit_nb_medecins']*1+neighbors_df.loc[:,'neighbors_deficit_nb_medecins']*poids_des_voisins
 
     return neighbors_df

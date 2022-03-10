@@ -341,7 +341,7 @@ def get_all_neighbors_by_csv(radius=15, name=None):
     return df_comms_neighbors
 
 
-def get_all_neighbors(radius=15, name=None):
+def get_all_neighbors(radius=9, name=None):
     df_base = get_full_medbase()
     
     list_neighbors = []
@@ -350,7 +350,7 @@ def get_all_neighbors(radius=15, name=None):
     rnc.fit(df_base[['Lat_commune', 'Lon_commune']])
 
     for index, row_base in df_base.iterrows():
-        closest = rnc.radius_neighbors(X=[[row_base.get('Lat_commune'), row_base.get('Lon_commune')]],radius=radius*0.013276477888701137)
+        closest = rnc.radius_neighbors(X=[[row_base.get('Lat_commune'), row_base.get('Lon_commune')]],radius=radius*0.012776477888701137)
 
         # ignore le premier résultat qui est la commune elle-même
         for i in range(0, len(closest[0][0])):
@@ -365,11 +365,11 @@ def get_all_neighbors(radius=15, name=None):
     return df_comms_neighbors
 
 
-def create_dataframe_neighbor(radius=15, name=None):
+def create_dataframe_neighbor(radius=9, name=None):
     if not name:
             name = "../raw_data/communes_neighbors.csv"
 
-    get_all_neighbors(radius).to_csv(name, index=False)
+    get_all_neighbors(radius=radius).to_csv(name, index=False)
 
 '''
 Deprecated function
