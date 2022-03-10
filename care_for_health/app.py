@@ -25,7 +25,7 @@ st.markdown('''
 columns = st.columns(3)
 
 radius = columns[0].text_input('Select radius', value='15')
-moy_region = columns[1].text_input('Set a breakeven ratio', value='0.84')
+breakeven = columns[1].text_input('Set a breakeven ratio', value='0.84')
 poids_des_voisins = columns[2].text_input('Neighbors_weight', value='0.1')
 
 columns2 = st.columns(3)
@@ -36,7 +36,7 @@ med_pickup = columns2[0].selectbox(
 how_to_sort = columns2[1].selectbox(
      'Which type of spread do you want to choose?',
      ('Distance_based', 'Calcul_based'))
-nb_voisins_minimum = columns2[2].selectbox('Minimum number of neighbors', range(1,11))
+nb_voisins_minimum = columns2[2].slider('Minimum number of neighbors', 1, 10, 3)#selectbox('Minimum number of neighbors', range(1,11))
 
 if med_pickup=='As many as possible':
     med_pickup='tous'
@@ -48,21 +48,22 @@ if how_to_sort=='Distance_based':
 else:
     sortby='calculated'
 
-url = 'http://127.0.0.1:8000/predict'
+url = 'https://careforhealth-gfiqg24vta-ew.a.run.app/predict'
+#url='http://127.0.0.1:8000/predict'#local
 
 params=dict(
     selection_medecins=str(med_pickup),
     sortby=sortby,
+    moy_region=str(breakeven),
     radius=radius,
     recalcul=False,
     )
 
 '''
-    moy_region=moy_region,
     poids_des_voisins=poids_des_voisins,
     nb_voisins_minimum=nb_voisins_minimum,
 '''
-df_default = pd.read_csv('brouillon/df_api_test.csv', delimiter=',', dtype={'code_insee':'str'}, usecols=['code_insee', 'neighbors_taux_de_couverture']).reindex()# converters={"neighbors": lambda x: ast.literal_eval(x)}).reindex()
+df_default = pd.read_csv('data/df_api_test.csv', delimiter=',', dtype={'code_insee':'str'}, usecols=['code_insee', 'neighbors_taux_de_couverture']).reindex()# converters={"neighbors": lambda x: ast.literal_eval(x)}).reindex()
 df_combine = df_default
 st.markdown('''
 
@@ -108,7 +109,7 @@ def chloropleth_map_communes(df_communes,code_insee_str,taux_couv_str):
             locations = df_communes[code_insee_str], #Assign location data : code INSEE
             z = df_communes[taux_couv_str], #Assign information data : taux de couverture
             zmin=0, zmax=1.5,
-            colorscale = [[0, 'rgb(0,0,255)'], [0.3, 'rgb(0,255,0)'], [1, 'rgb(255,0,0)']],
+            colorscale = [[0, 'rgb(0,0,255)'], [0.5, 'rgb(0,255,0)'], [1, 'rgb(255,0,0)']],
             showscale = True))
 
     fig.update_layout(
@@ -124,7 +125,7 @@ def chloropleth_map_communes(df_communes,code_insee_str,taux_couv_str):
 #fig.update_layout(mapbox_style="stamen-terrain", mapbox_zoom=10, mapbox_center_lat = mid_lat, mapbox_center_lon = mid_lon,
 #    margin={"r":0,"t":0,"l":0,"b":0})
 
-@st.cache
+#@st.cache
 def display_chloro_cache2():
     fig = chloropleth_map_communes(df_combine,'code_insee', 'neighbors_taux_de_couverture')
     return fig
@@ -134,11 +135,11 @@ st.plotly_chart(fig, use_container_width=True)
 
 #st.plotly_chart(fig, use_container_width=True)
 
-fig.update_traces(
-        z = df_combine['neighbors_taux_de_couverture'], #Assign information data : taux de couverture
-        zmin=0, zmax=1.5,
-        colorscale = [[0, 'rgb(0,0,255)'], [0.6, 'rgb(0,255,0)'], [1, 'rgb(255,0,0)']],
-)
+#fig.update_traces(
+#        z = df_combine['neighbors_taux_de_couverture'], #Assign information data : taux de couverture
+#        zmin=0, zmax=1.5,
+#        colorscale = [[0, 'rgb(0,0,255)'], [0.6, 'rgb(0,255,0)'], [1, 'rgb(255,0,0)']],
+#)
 #fig.update_layout()
 #return chloropleth_map_communes(df_combine,'code_insee', 'neighbors_taux_de_couverture')
 
