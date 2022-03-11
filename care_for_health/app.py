@@ -6,7 +6,6 @@ import json
 from sklearn.metrics import mean_absolute_error
 import numpy as np 
 import matplotlib.pyplot as plt
-from care_for_health import stats_regions
 
 st.set_page_config(
      page_title="General practitioners repartition",
