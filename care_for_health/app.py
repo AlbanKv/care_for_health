@@ -247,6 +247,19 @@ for app in apps:
 output_col = st.columns(2)
 res_df_slot = output_col[0].empty()
 results_dataframe = res_df_slot.dataframe(all_results)
+
+# Statistiques
+def stat_retour(df_avant, df_apres, name_col_av, name_col_ap):
+    df_stats = df_avant.rename(columns={name_col_av: "taux_avant"})\
+                            .merge(df_apres.rename(columns={name_col_ap: "taux_apres"}), on="code_insee")[["code_insee", "taux_avant","taux_apres"]]\
+                            #.merge(region_df_name(), on="code_regions")
+
+    plt.hist([df_stats["taux_avant"], df_stats["taux_apres"]], bins=[0,0.5,1,1.5, 2,3], color=["tab:orange", "tab:blue"])
+    plt.title("Number of communes by coverage after transformation")
+    plt.legend(["Before", "After"])
+    plt.show()
+
 fig, ax = plt.subplots()
-ax = stats_regions.stat_retour(df[df['code_regions']==region_val],df_combine,'neighbors_taux_de_couverture', 'neighbors_taux_de_couverture')
+ax = stat_retour(df[df['code_regions']==region_val],df_combine,'neighbors_taux_de_couverture', 'neighbors_taux_de_couverture')
 output_col[1].pyplot(fig)
+
