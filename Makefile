@@ -82,3 +82,5 @@ deploy_heroku:
 	-@git push heroku master
 	-@heroku ps:scale web=1
 
+run_streamlit:
+	@streamlit run care_for_health/app.py

@@ -19,7 +19,7 @@ def chloropleth_map_regions(df_regions,code_regions_str,taux_couv_str):
             featureidkey = "properties.code", #Assign feature key : code régions
             locations = df_regions[code_regions_str], #Assign location data : code régions
             z = df_regions[taux_couv_str], #Assign information data : taux de couverture
-            zmin=df_regions[taux_couv_str].min(), zmax=df_regions[taux_couv_str].max(),
+            zmin=0.6, zmax=1.2,
             colorscale = 'RdYlBu',
             showscale = True))
 
