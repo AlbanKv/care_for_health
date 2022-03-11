@@ -71,3 +71,15 @@ def predict(
         'Taux final pondéré': scr['final_weighted_rate'],
         'Data':json.dumps(y_dict)
     }
+
+@app.get("/initialdf")
+def initialdf(code_region=None):
+    df = pd.read_csv('data/df_api_france_9.csv', delimiter=',', dtype={'code_insee':'str'}, converters={"neighbors": lambda x: ast.literal_eval(x)}).reindex()
+    if code_region == None or code_region == 'None':
+        pass
+    else:
+        code_region=int(code_region)
+        df = df[df["code_regions"].isin([code_region])][['code_insee', 'Lat_commune', 'Lon_commune', 'neighbors_taux_de_couverture']].copy()
+
+    dict_df = df.set_index('code_insee').to_dict()
+    return {'data': json.dumps(dict_df)}

@@ -6,14 +6,14 @@ import json
 from sklearn.metrics import mean_absolute_error
 import numpy as np 
 import matplotlib.pyplot as plt
-
+import ast
 st.set_page_config(
      page_title="General practitioners repartition",
      page_icon="",
      layout="wide",
      initial_sidebar_state="expanded",
     )
-region=[52]
+region=[94]
 region_dict= {
         "Auvergne-Rhône-Alpes":84,
         "Bourgogne-Franche-Comté": 27,
@@ -43,14 +43,14 @@ st.markdown('''
 # General Practitioners repartition''')
 columns0 = st.columns(2)
 columns0[0].markdown('''#### Improving daily access to general practitioners in France, based on a different repartition.''')
-option = columns0[1].selectbox('Select a Region', reg_mini_df['Region'], index=11)
+option = columns0[1].selectbox('Select a Region', reg_mini_df['Region'], index=4)
 
 columns = st.columns(3)
 
 radius = columns[0].slider('Select radius (in Km)', 5, 50, 15)#text_input('Select radius', value='15')
         
 med_pickup = columns[1].selectbox('How would you pick general practitioners?',
-     ('As many as possible', 'Only where they are too numerous'))
+     ('Only where they are too numerous', 'As many as possible'))
 how_to_sort = columns[2].selectbox('Which type of spread do you want to choose?',
      ('Nearest neighbors first', 'Worst ratio first', 'Numerous missing GPs first', 'Worst weighted ratio first', 'Combination of all of it'))
 columns2 = st.columns(3)
@@ -96,25 +96,28 @@ df_cols = {
 
 @st.cache
 def calls_csv():
-    filepath = 'data/df_api_france_9.csv'#"brouillon/df_api_test.csv"#https://raw.githubusercontent.com/giswqs/leafmap/master/examples/data/us_cities.csv"
-    return pd.read_csv(filepath, usecols=list(df_cols.keys()), dtype=df_cols)
+    url_df_init = 'http://localhost:8000/initialdf'
+    params_init=dict(code_region=region_dict[option])
+    response = requests.get(url_df_init, params=params_init)
+    data_init=response.json()['data']
+    return pd.DataFrame.from_dict(ast.literal_eval(data_init)).reset_index().rename(columns={'index': 'code_insee'})
+    #filepath = 'data/df_api_france_9.csv'#"brouillon/df_api_test.csv"#https://raw.githubusercontent.com/giswqs/leafmap/master/examples/data/us_cities.csv"
+    #return pd.read_csv(filepath, usecols=list(df_cols.keys()), dtype=df_cols)
 df = calls_csv()
-
 
 
 region_val=region_dict[option]
 
-df_combine = df[df['code_regions']==region_val].copy()
+df_combine = df.copy()#[df['code_regions']==region_val].copy()
 
 mae_init=mean_absolute_error(df_combine['neighbors_taux_de_couverture'], np.full(len(df_combine['neighbors_taux_de_couverture']),np.mean(df_combine['neighbors_taux_de_couverture'])))
 
 if "mae_init" not in st.session_state:
     st.session_state.mae_init = mae_init#=mean_absolute_error(df['neighbors_taux_de_couverture'], np.full(len(df['neighbors_taux_de_couverture']),np.mean(df['neighbors_taux_de_couverture'])))
-st.markdown(st.session_state.mae_init)
 dicty={}
-all_results=pd.DataFrame(columns=['Initial rate', 'Calculated rate', 'Average moved distance', 'Total distance', 'Number of relocated GPs'], data=[["","","","",""]])
+all_results=pd.DataFrame(columns=['Value'], data=[[""]])
 
-col_buttons = st.columns(5)
+col_buttons = st.columns(4)
 if col_buttons[0].button('Make the magic happen'):
     # Set params:
     if breakeven=='None':
@@ -147,9 +150,9 @@ if col_buttons[0].button('Make the magic happen'):
         'Total distance':f"{req.json()['Distance_totale_parcourue']} km", 
         'Number of relocated GPs':f"{int(float(req.json()['Distance_totale_parcourue'])/float(req.json()['Distance_moyenne_parcourue']))} GPs",
     }
-    all_results=pd.DataFrame.from_dict(data=res_dict, orient='index')
+    all_results=pd.DataFrame.from_dict(data=res_dict, orient='index', columns=['Values'] )
     mae_out=mean_absolute_error(df_combine['neighbors_taux_de_couverture'], np.full(len(df_combine['neighbors_taux_de_couverture']),np.mean(df_combine['neighbors_taux_de_couverture'])))
-    col_buttons[4].markdown(f'''{(mae_out-mae_init)*100:.2f}''')
+    #col_buttons[4].markdown(f'''{(mae_out-mae_init)*100:.2f}''')
     df_from_dicty = pd.DataFrame(dicty).reset_index().rename(columns={'index': 'code_insee'})
     df_combine=df_combine.rename(columns={'neighbors_taux_de_couverture':'neighbors_old_taux_de_couverture'}).merge(df_from_dicty, how='left', left_on='code_insee', right_on='code_insee')
 
@@ -242,7 +245,6 @@ for app in apps:
         eval(f"{heatmap()}")
         break
 
-
 output_col = st.columns(2)
 res_df_slot = output_col[0].empty()
 results_dataframe = res_df_slot.dataframe(all_results)
@@ -259,6 +261,6 @@ def stat_retour(df_avant, df_apres, name_col_av, name_col_ap):
     plt.show()
 
 fig, ax = plt.subplots()
-ax = stat_retour(df[df['code_regions']==region_val],df_combine,'neighbors_taux_de_couverture', 'neighbors_taux_de_couverture')
+ax = stat_retour(df,df_combine,'neighbors_taux_de_couverture', 'neighbors_taux_de_couverture')
 output_col[1].pyplot(fig)
 
