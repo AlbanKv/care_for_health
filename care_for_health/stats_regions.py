@@ -167,7 +167,7 @@ def stat_retour(df_avant, df_apres, name_col_av, name_col_ap):
                             .merge(df_apres.rename(columns={name_col_ap: "taux_apres"}), on="code_insee")[["code_insee", "taux_avant","taux_apres"]]\
                             #.merge(region_df_name(), on="code_regions")
 
-    plt.hist([df_stats["taux_avant"], df_stats["taux_apres"]], bins=[0,0.5,1,1.5, 2,3])
+    plt.hist([df_stats["taux_avant"], df_stats["taux_apres"]], bins=[0,0.5,1,1.5, 2,3], color=["tab:orange", "tab:blue"])
     plt.title("Number of communes by coverage after transformation")
     plt.legend(["Before", "After"])
     plt.show()
