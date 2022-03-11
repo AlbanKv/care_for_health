@@ -20,14 +20,14 @@ def chloropleth_map_regions(df_regions,code_regions_str,taux_couv_str):
             locations = df_regions[code_regions_str], #Assign location data : code régions
             z = df_regions[taux_couv_str], #Assign information data : taux de couverture
             zmin=df_regions[taux_couv_str].min(), zmax=df_regions[taux_couv_str].max(),
-            colorscale = 'viridis',
+            colorscale = 'RdYlBu',
             showscale = True))
 
     fig.update_layout(
-        width = 600,
+        width = 1000,
         height = 600,
         mapbox_style = "carto-positron",
-        mapbox_zoom = 4,
+        mapbox_zoom = 3.8,
         mapbox_center = {"lat": 46.227638, "lon": 2.213749}, #Centre de la France
     )
 
