@@ -7,7 +7,7 @@ requirements = [x.strip() for x in content if 'git+' not in x]
 
 setup(name='care_for_health',
       version="1.0",
-      description="Project Description",
+      description="Care_for_health Le Wagon Project",
       packages=find_packages(),
       install_requires=requirements,
       test_suite='tests',

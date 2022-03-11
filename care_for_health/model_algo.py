@@ -5,7 +5,7 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels
 from sklearn.metrics import euclidean_distances
 import itertools
-
+import ast
 from care_for_health import preprocessing
 from care_for_health.algorithm import nb_medecins_disponibles, sort_neighbors
 
@@ -18,7 +18,7 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
     def __init__(self, selection_medecins='tous', sortby='calculated', radius=15, moy_region=None, recalcul=False, poids_des_voisins=0.1, nb_voisins_minimum=3, **kwargs):
         self.selection_medecins=selection_medecins
         self.sortby=sortby
-        self.radius=radius
+        self.radius=int(radius)
         self.moy_region=moy_region
         self.recalcul=recalcul
         self.poids_des_voisins=poids_des_voisins
@@ -30,50 +30,50 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
     def fit(self, X, y=None, **fit_params):
         # Check that X has correct shape
         self.X_ = X
-        self.baseline = self.X_.neighbors_taux_de_couverture.mean()
-        self.baseline_communes = len(self.X_[self.X_['neighbors_taux_de_couverture']<self.moy_region])
-        var_radius = self.radius*0.013276477888701137
+        var_radius = int(self.radius)*0.013276477888701137
         rnc = NearestNeighbors(radius=var_radius, p=2)
         #Initialisation des plus proches voisins : 
         self.rnc = rnc.fit(self.X_[['Lat_commune', 'Lon_commune']])
          # Return the classifier
         self.is_fitted_ = True
-        self.recap = {'delta_taux': 0}
+        self.recap = {'delta_taux': 0, 'total_medecins': sum(self.X_['Medecin_generaliste']), 'initial_weighted_rate': sum(self.X_.neighbors_taux_de_couverture * self.X_.neighbors_Besoin_medecins) / sum(self.X_.neighbors_Besoin_medecins)}
         return self
 
     def predict(self, X, y=None, ):
         # Check is fit had been called
         self.df_=X.copy()
-        pool_communes = self.df_[(self.df_.neighbors_taux_de_couverture > self.moy_region)&(self.df_.Medecin_generaliste >= 1)].sort_values(by='neighbors_taux_de_couverture', ascending=False)
 
         # Listing des modifications :
         self.distance = []
         self.output = []
-        #trades = []
-        #neighbors_stats = []
-        
-        if self.moy_region:
-            df_["moy_region"] = self.moy_region
-        else:
-            df_moy_reg = df_.groupby("code_regions", as_index=False).agg(sum_besoin=("Besoin_medecins", "sum"), sum_meds=("Medecin_generaliste", "sum"))
+
+        if self.moy_region == None or self.moy_region == 'None':
+            df_moy_reg = self.df_.groupby("code_regions", as_index=False).agg(sum_besoin=("Besoin_medecins", "sum"), sum_meds=("Medecin_generaliste", "sum"))
             df_moy_reg["moy_region"] = round(df_moy_reg["sum_meds"] / df_moy_reg["sum_besoin"], 2)
 
             df_moy_reg.drop(columns=["sum_besoin", "sum_meds"], inplace=True)
 
-            df_ = df_.merge(df_moy_reg, how="left", on="code_regions")
+            self.df_ = self.df_.merge(df_moy_reg, how="left", on="code_regions")
+        else:
+            self.df_['moy_region'] = 0
+            self.df_.loc[:,"moy_region"] = float(self.moy_region)
 
+        # Stats initiales
+        pool_communes = self.df_[(self.df_.neighbors_taux_de_couverture > self.df_.moy_region)&(self.df_.Medecin_generaliste >= 1)].sort_values(by='neighbors_taux_de_couverture', ascending=False)
+        self.baseline = self.df_.neighbors_taux_de_couverture.mean()
+        #self.baseline = sum(self.df_.neighbors_nb_medecins) / sum(self.df_.neighbors_Besoin_medecins) # recalculé avec pondération dans initial_weighted_rate
+        self.baseline_communes = len(self.df_[self.df_['neighbors_taux_de_couverture']<self.df_.moy_region])
         # Début de l'itération
         for ind, row in pool_communes.iterrows():
 
             # Nombre de médecins disponibles AVANT transformation:
             med_dispo = nb_medecins_disponibles(self.df_.loc[ind,:], selection_medecins=self.selection_medecins)
-
             # Identification des communes ayant une meilleure couverture que la moyenne de la région:
-            if self.df_.loc[ind,'neighbors_taux_de_couverture'] > df_.moy_region and med_dispo >= 1 :
+            if self.df_.loc[ind,'neighbors_taux_de_couverture'] > self.df_.loc[ind,'moy_region'] and med_dispo >= 1 :
                 
                 # Sélection des voisins, cleaning avec seulement les déficitaires:
                 # Idée pour la suite: ne pourrait-on pas tester chaque type de 'sortby' et conserver le meilleur résultat ?
-                temp_moy_region=df_.moy_region # Valeur minimale, pouvant être repoussée si aucun voisin déficitaire n'est identifié
+                temp_moy_region=self.df_.loc[ind, 'moy_region'] # Valeur minimale, pouvant être repoussée si aucun voisin déficitaire n'est identifié
                 temp_radius=self.radius
 
                 neighbors_df = sort_neighbors(ind, self.rnc, self.df_, sortby=self.sortby, moy_region=temp_moy_region, radius=temp_radius, poids_des_voisins=self.poids_des_voisins)
@@ -100,7 +100,6 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
                             medecins_assignables = -1 * int(neighbors_df.loc[key, 'medecins_assignables'])
                             #print(f"{med_dispo} à dispatcher, {medecins_assignables} médecins assignables")
                             
-                            prev = self.df_.loc[key, 'Medecin_generaliste']
                             if medecins_assignables>=1 and med_dispo>0:
                                 self.df_.loc[key, 'Medecin_generaliste'] = self.df_.loc[key, 'Medecin_generaliste'] + min(med_dispo,medecins_assignables)
                                 self.df_.loc[ind, 'Medecin_generaliste'] = self.df_.loc[ind, 'Medecin_generaliste'] - min(med_dispo,medecins_assignables)
@@ -122,7 +121,8 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
         # Production du dictionnaire récapitulatif & chiffres clés
         self.df_ = preprocessing.get_meds_neighbors_df(self.df_)
         self.output = self.df_.neighbors_taux_de_couverture.mean()
-        self.output_communes = len(self.df_[self.df_['neighbors_taux_de_couverture']<df_.moy_region])
+        #self.output = sum(self.df_.neighbors_nb_medecins) / sum(self.df_.neighbors_Besoin_medecins) # recalculé pour être pondéré avec final_weighted_rate
+        self.output_communes = len(self.df_[self.df_['neighbors_taux_de_couverture']<self.df_.moy_region])
 
         #recap['trades'] = trades
         self.distances = self.distance
@@ -131,7 +131,7 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
         self.recap['delta_taux']=round(self.output-self.baseline, 3)
         self.recap['ancien_communes_déficitaires']= self.baseline_communes
         self.recap['nouveau_communes_déficitaires']= self.output_communes
-        self.recap['delta_communes']= self.output_communes-self.baseline_communes
+        self.recap['delta_communes']= self.baseline_communes-self.output_communes
         self.recap['distance_moyenne']= np.array(self.distance).mean()
         if len(self.distance)==0:
             self.recap['distance_min']= 'na'
@@ -140,15 +140,16 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
             self.recap['distance_min']= np.array(self.distance).min()
             self.recap['distance_max']= np.array(self.distance).max()
         self.recap['médecins_déplacés']= len(self.distance)
+        self.recap['final_weighted_rate']= sum(self.df_.neighbors_taux_de_couverture * self.df_.neighbors_Besoin_medecins) / sum(self.df_.neighbors_Besoin_medecins)
 
-        return self.df_[['code_insee', 'neighbors_taux_de_couverture']]#, 'neighbors_taux_de_couverture']]#, recap
+        return self.df_[['code_insee', 'neighbors_taux_de_couverture', 'neighbors_Besoin_medecins']]#, 'neighbors_taux_de_couverture']]#, recap
 
     def get_params(self, deep=True):
         # suppose this estimator has parameters "alpha" and "recursive"
         return {'selection_medecins':self.selection_medecins,
                 'sortby':self.sortby,
                 'radius':self.radius,
-                'moy_region':self.moy_region,
+                'moy_region':self.df_.moy_region.mean(),
                 'recalcul':self.recalcul,
                 'poids_des_voisins':self.poids_des_voisins,
                 'nb_voisins_minimum':self.nb_voisins_minimum,
@@ -172,7 +173,7 @@ def grid_search_med(X, **kwargs):
     
     params=dict(
         selection_medecins=['tous', 'excédent'],
-        sortby=['distance', 'deficit_rate', 'deficit_absolute', 'random', 'calculated'],
+        sortby=['distance', 'deficit_rate', 'deficit_absolute', 'random', 'calculated', 'computed_need'],
         radius=[10, 15, 20],
         moy_region=[0.82],
         recalcul=[True, False],
@@ -203,7 +204,7 @@ def grid_search_med(X, **kwargs):
         print(f'forme de la grille à tester: {grid.shape}')
         
         # Création de la grille de résultats
-        grid_results = pd.DataFrame(columns=['ancien_taux', 'nouveau_taux', 'delta_taux', 'ancien_communes_déficitaires', 'nouveau_communes_déficitaires', 'delta_communes', 'médecins_déplacés', 'distance_min', 'distance_max', 'distance_moyenne', 'params'])
+        grid_results = pd.DataFrame(columns=['ancien_taux', 'nouveau_taux', 'delta_taux', 'ancien_communes_déficitaires', 'nouveau_communes_déficitaires', 'delta_communes', 'médecins_déplacés', 'distance_min', 'distance_max', 'distance_moyenne', 'taux pondéré initial', 'taux pondéré final', 'params'])
         n=0
         
         # Initialisation du modèle
@@ -218,7 +219,7 @@ def grid_search_med(X, **kwargs):
             model.fit(X)
             model.predict(X)
             scr=model.score(X)
-            print(scr)
+            print(f"{(scr['final_weighted_rate']-scr['initial_weighted_rate'])*100:.2f}")
             # Enregistrement des résultats
             grid_results.loc[n,:]=[
                 scr['ancien_taux'],
@@ -231,6 +232,8 @@ def grid_search_med(X, **kwargs):
                 scr['distance_min'],
                 scr['distance_max'],
                 scr['distance_moyenne'],
+                scr['initial_weighted_rate'],
+                scr['final_weighted_rate'],
                 testing_params,
             ]
             n+=1
