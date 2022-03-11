@@ -6,6 +6,8 @@ import requests
 import json
 from sklearn.metrics import mean_absolute_error
 import numpy as np 
+import matplotlib.pyplot as plt
+from care_for_health import stats_regions
 
 st.set_page_config(
      page_title="General practitioners repartition",
@@ -87,6 +89,7 @@ apps = {
 
 df_cols = {
     'code_insee': 'str', 
+    'code_regions': 'int',
     'neighbors_taux_de_couverture': 'float', 
     'Lat_commune': 'float', 
     'Lon_commune': 'float', 
@@ -139,13 +142,14 @@ if col_buttons[0].button('Make the magic happen'):
         col_buttons[3].markdown(f'''### +{req.json()['Evolution du taux']*100:.2f} %''')
     else:
         col_buttons[3].markdown(f'''## Evolution du taux: {req.json()['Evolution du taux']*100:.2f} %''')
-    all_results=pd.DataFrame(
-        columns=['Initial rate', 'Calculated rate', 'Average moved distance', 'Total distance', 'Number of relocated GPs'], 
-        data=[[f"{req.json()['Ancien_taux_moyenne_communes']*100:.2f}%",
-            f"{req.json()['Nouveau_taux_moyenne_communes']*100:.2f}%",
-            f"{req.json()['Distance_moyenne_parcourue']:.2f} km per GP",
-            f"{req.json()['Distance_totale_parcourue']} km",
-            f"{int(float(req.json()['Distance_totale_parcourue'])/float(req.json()['Distance_moyenne_parcourue']))} GPs"]])
+    res_dict = {
+        'Initial rate':f"{req.json()['Ancien_taux_moyenne_communes']*100:.2f}%",
+        'Calculated rate':f"{req.json()['Nouveau_taux_moyenne_communes']*100:.2f}%", 
+        'Average moved distance':f"{req.json()['Distance_moyenne_parcourue']:.2f} km per GP", 
+        'Total distance':f"{req.json()['Distance_totale_parcourue']} km", 
+        'Number of relocated GPs':f"{int(float(req.json()['Distance_totale_parcourue'])/float(req.json()['Distance_moyenne_parcourue']))} GPs",
+    }
+    all_results=pd.DataFrame.from_dict(data=res_dict, orient='index')
     mae_out=mean_absolute_error(df_combine['neighbors_taux_de_couverture'], np.full(len(df_combine['neighbors_taux_de_couverture']),np.mean(df_combine['neighbors_taux_de_couverture'])))
     col_buttons[4].markdown(f'''{(mae_out-mae_init)*100:.2f}''')
     df_from_dicty = pd.DataFrame(dicty).reset_index().rename(columns={'index': 'code_insee'})
@@ -240,7 +244,10 @@ for app in apps:
         eval(f"{heatmap()}")
         break
 
-res_df_slot = st.empty()
 
-results_dataframe = res_df_slot.dataframe(all_results.style)
-
+output_col = st.columns(2)
+res_df_slot = output_col[0].empty()
+results_dataframe = res_df_slot.dataframe(all_results)
+fig, ax = plt.subplots()
+ax = stats_regions.stat_retour(df[df['code_regions']==region_val],df_combine,'neighbors_taux_de_couverture', 'neighbors_taux_de_couverture')
+output_col[1].pyplot(fig)
