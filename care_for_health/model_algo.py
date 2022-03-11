@@ -19,7 +19,7 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
         self.selection_medecins=selection_medecins
         self.sortby=sortby
         self.radius=int(radius)
-        self.moy_region=moy_region
+        self.moy_region=None#moy_region
         self.recalcul=recalcul
         self.poids_des_voisins=poids_des_voisins
         self.nb_voisins_minimum=nb_voisins_minimum
@@ -140,6 +140,7 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
             self.recap['distance_min']= np.array(self.distance).min()
             self.recap['distance_max']= np.array(self.distance).max()
         self.recap['médecins_déplacés']= len(self.distance)
+        self.recap['médecins_fin_de_traitement']=sum(self.df_.Medecin_generaliste)
         self.recap['final_weighted_rate']= sum(self.df_.neighbors_taux_de_couverture * self.df_.neighbors_Besoin_medecins) / sum(self.df_.neighbors_Besoin_medecins)
 
         return self.df_[['code_insee', 'neighbors_taux_de_couverture', 'neighbors_Besoin_medecins']]#, 'neighbors_taux_de_couverture']]#, recap
@@ -149,7 +150,7 @@ class Medical_ReDispatch(BaseEstimator, ClassifierMixin):
         return {'selection_medecins':self.selection_medecins,
                 'sortby':self.sortby,
                 'radius':self.radius,
-                'moy_region':self.df_.moy_region.mean(),
+                #'moy_region':self.df_.moy_region.mean(),
                 'recalcul':self.recalcul,
                 'poids_des_voisins':self.poids_des_voisins,
                 'nb_voisins_minimum':self.nb_voisins_minimum,
