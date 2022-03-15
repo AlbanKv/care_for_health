@@ -1,74 +1,28 @@
-# Data analysis
-- Document here the project: care_for_health
-- Description: Project Description
-- Data Source:
-- Type of analysis:
+# Why Care for Health?
+- In France, there is an **alarming trend** regarding what is called **'medical desertification'**. 
+- One of the three key elements of it is the **lack of General Practitioners** (GPs) in the countryside. 
+- As training new GPs takes about 10 years...
+- ... We investigate another option: **what would be the impact of 'reallocating' GPs throughout the territory?**
 
-Please document the project the better you can.
+_We are a team of 3 in the final sprint of the amazing Le Wagon Data Science bootcamp_
 
-# Startup the project
+# Our Data Science value proposition
+- Looking for an off-the-shelf product within the huge SKlearn library, we could not find something that suited our needs.
+- We've thus **developed an algorithm** that would realize the following: 
+  => Within a reasonable radius, reallocate surplus of GPs in some cities to 'neighbor' municipalities in deficit
+  => Play with parameters such as: 
+    How to select GPs | 
+    Target and 'rank' municipalities in deficit options | 
+    Set a max radius for local reallocation | 
+    Minimum number of neighbor cities to target for each reallocation | 
+    ...
+- Developed in Python using Jupyter Notebooks & VS Code
+- Concept of 'Neighbor municipalities' computed using SKLearn library NearestNeihbors
+- Algorithm available on the cloud using Uvicorn & FastAPI > stored on a Docker image > uploaded to Google Cloud Platform (Container Registry + Cloud Run)
+- Data visualization & online render: using Streamlit > hosted on Heroku
 
-The initial setup.
+# Bootcamp final project has been presented to public
+during 'Le Wagon batch 789 Demo Day' on March, 11th.
 
-Create virtualenv and install the project:
-```bash
-sudo apt-get install virtualenv python-pip python-dev
-deactivate; virtualenv ~/venv ; source ~/venv/bin/activate ;\
-    pip install pip -U; pip install -r requirements.txt
-```
-
-Unittest test:
-```bash
-make clean install test
-```
-
-Check for care_for_health in gitlab.com/{group}.
-If your project is not set please add it:
-
-- Create a new project on `gitlab.com/{group}/care_for_health`
-- Then populate it:
-
-```bash
-##   e.g. if group is "{group}" and project_name is "care_for_health"
-git remote add origin git@github.com:{group}/care_for_health.git
-git push -u origin master
-git push -u origin --tags
-```
-
-Functionnal test with a script:
-
-```bash
-cd
-mkdir tmp
-cd tmp
-care_for_health-run
-```
-
-# Install
-
-Go to `https://github.com/{group}/care_for_health` to see the project, manage issues,
-setup you ssh public key, ...
-
-Create a python3 virtualenv and activate it:
-
-```bash
-sudo apt-get install virtualenv python-pip python-dev
-deactivate; virtualenv -ppython3 ~/venv ; source ~/venv/bin/activate
-```
-
-Clone the project and install it:
-
-```bash
-git clone git@github.com:{group}/care_for_health.git
-cd care_for_health
-pip install -r requirements.txt
-make clean install test                # install and test
-```
-Functionnal test with a script:
-
-```bash
-cd
-mkdir tmp
-cd tmp
-care_for_health-run
-```
+# What's next? 
+[Work in Progress :)]
