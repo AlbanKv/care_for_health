@@ -23,6 +23,8 @@ _We are a team of 3 in the final sprint of the amazing Le Wagon Data Science boo
 
 # Bootcamp final project has been presented to public
 during 'Le Wagon batch 789 Demo Day' on March, 11th.
+Watch our presentation by clicking the picture below (in French):
+[![Watch the video](https://img.youtube.com/vi/CDMdWBVJIis/maxresdefault.jpg)](https://youtu.be/CDMdWBVJIis?t=2020)
+or copy-paste this link: https://youtu.be/CDMdWBVJIis?t=2020
 
-# What's next? 
-[Work in Progress :)]
+Thanks!
